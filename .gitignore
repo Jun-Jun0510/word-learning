@@ -8,3 +8,6 @@ agent-teams-docs.md
 corpus/
 .venv/
 pipeline/out/middata.json
+
+# held-out set: local only, Claude must not read until Phase 2b gate
+pipeline/eval/heldout.yaml
