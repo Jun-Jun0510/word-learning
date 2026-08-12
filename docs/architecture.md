@@ -10,8 +10,9 @@
 ```mermaid
 flowchart LR
   subgraph build["ビルド時(Node / ローカル or GitHub Actions)"]
-    A[コーパスA<br/>wordfreq/SUBTLEX] --> P[corpus-pipeline<br/>集計・二軸分類]
-    B[コーパスB<br/>学術英語] --> P
+    A1[コーパスA 頻度<br/>wordfreq] --> P[corpus-pipeline<br/>集計・二軸分類]
+    A2[コーパスA 共起用生テキスト<br/>Wikipedia等 ※頻度リストに共起はない] --> P
+    B[コーパスB<br/>arXiv全分野サンプル] --> P
     C[コーパスC<br/>arXiv cs.RO+cs.LG] --> P
     P --> V[vocab_table.json<br/>目標1MB以下]
     P --> D[debug_l1a.json<br/>L1a落ち上位N件]
@@ -89,7 +90,9 @@ word-learning/
       "domainSense": "a function measuring similarity between data points (SVM/GP context)",
       "contrast": "not the seed/core of a nut — in ML it's a similarity function",
       "ja": "カーネル(類似度関数)",     // トグル表示用
-      "score": 0.82              // 横軸スコア(ソート用、詳細は algorithm.md)
+      "score": 0.82,             // 横軸スコア(ソート用、詳細は algorithm.md)
+      "collGeneral": ["free", "blood", "take"],          // 一般英語での共起(説明素材)
+      "collField": ["distribution", "i.i.d.", "minibatch"] // 分野での共起(説明素材)
     }
   },
   "lemma": { "kernels": "kernel", "denoted": "denote" }   // 変化形→見出し語
