@@ -9,7 +9,9 @@
   "scripts": {
     "fetch:c": "tsx pipeline/fetch/fetch_arxiv.ts --profile C",
     "fetch:b": "tsx pipeline/fetch/fetch_arxiv.ts --profile B",
-    "fetch:a": "bash pipeline/fetch/fetch_general.sh"
+    "fetch:a": "bash pipeline/fetch/fetch_general.sh",
+    "build:stats": "tsx pipeline/compute/build.ts",
+    "eval": "tsx pipeline/eval/evaluate.ts"
   },
   "repository": {
     "type": "git",
@@ -28,7 +30,8 @@
     "fast-xml-parser": "^5.10.1",
     "js-yaml": "^5.2.3",
     "tsx": "^4.23.12",
-    "typescript": "^7.0.2"
+    "typescript": "^7.0.2",
+    "wink-lemmatizer": "^3.0.4"
   },
   "private": true,
   "type": "module"

@@ -82,6 +82,15 @@
   - 絞り順: **score 降順を主キー、文書内出現回数 降順を副キー**(危険度が同等なら、その文書で何度も遭遇する語を優先)
   - 削られた語は破棄せず、**「もっと見る」で全L3を展開可能**にする(非表示は取りこぼしと同型のため、必ず到達経路を残す)
 
+### Phase 2a PoC での改訂(2026-08-13 実測に基づく。詳細は `docs/summary_phase2a_poc.md`)
+
+実装・実測の結果、§3 の当初設計から以下を改訂した(実装の正は `pipeline/compute/build.ts`):
+
+1. **レジスタ相殺 delta**: JSD(A,C) 単独は学術レジスタずれ(however, paper)まで拾うため、語義軸の主信号を `delta = JSD(A,C) − JSD(A,B)` に変更。頻度軸も keynessC(C-vs-A)から `fieldKey`(C-vs-B)に変更
+2. **replaceGen(絶対版)は廃止**: 字幕→論文のジャンル差で全語 0.93〜1.0 に飽和し弁別力ゼロ(実測)。代わりに **rgRel**(A側典型隣人の生存率の B相対比)を採用。B にも同語義がある STEM横断危険語(mass, tight)は `sense-replace` ルート(jsdAC + rgRel)で拾う
+3. **談話標識の閉クラスガード**: however 等は選択選好がなく分布距離では語義語と原理的に区別不能のため、L3ルートから除外(設計上も L1b「論文英語」層の典型)
+4. 話題語ガードの実体は「rgRel による sense系ルートの gate + fieldKey 単独では topic-suspect 保留」となった(承認条件bの「保留+復活」の趣旨は maintained: 全スコア保持・debug_topic.json 目視・再ビルド復活)
+
 ### 語義説明(domainSense / contrast)の生成 — Phase 2 は静的
 - LLMは使わない(判定にも説明にも。順序厳守)。Phase 2 の説明文は:
   1. L3上位語(正解セット近傍+スコア上位N語)は**手書き**

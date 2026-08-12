@@ -21,7 +21,19 @@
 | `docs/algorithm.md` | L3判定アルゴリズム(単独切り出し)。SCDの分野軸転用、手法比較(log-odds+Dirichlet / 文脈分布JSD 採用、BERT不採用)、話題語ガード(replaceGen)、分類ロジック、コーパス調達とライセンス、評価設計(正解セットYAML形式・再現率+適合率ゲート・取りこぼし切り分け)、PoC実施順 | 1 | 済(レビュー反映済み) |
 | `docs/review_phase1.md` | reviewer-agent による Phase 1 批判レビューの指摘21件と対応の記録 | 1 | 済 |
 | `docs/phase1_approval.md` | Phase 1 承認の**原文**。話題語ガードの条件a/b、L3-academic のレベル拡張性、L3表示上限20語と削り方、負例2種、2a完了報告物。Phase 2a 実装条件の一次ソース | 1 | 済 |
-| `docs/setup_frontend.md` | フロントエンド選定理由と初期セットアップ手順(Q10) | 2 | 未着手(Phase 2 で作成) |
+| `docs/summary_phase2a_poc.md` | Phase 2a PoC 中間報告(統括)。ゲート数値(再現率90%/sense_shift 90%)、設計変更5イテレーションの経緯(delta・rgRel・談話標識ガード)、必須添付3点、設計プローブ(prior/mass)報告、残課題 | 2a | 済(precision@50 採点待ち) |
+| `docs/setup_frontend.md` | フロントエンド選定理由と初期セットアップ手順(Q10) | 2b | 未着手(Phase 2b で作成) |
+
+## pipeline/(コード・データ)
+
+| パス | 内容 |
+|---|---|
+| `pipeline/fetch/` | コーパス取得(arXiv API ハーベスタ、OpenSubtitles ストリーミング) |
+| `pipeline/compute/build.ts` | 判定エンジン本体(頻度・keyness・共起JSD・delta・rgRel・分類)。実装の正 |
+| `pipeline/eval/ground_truth.yaml` | ★凍結★ 正解セット(20正例+8負例) |
+| `pipeline/eval/evaluate.ts` | 評価(群別再現率・4段切り分け・precision@50リスト生成) |
+| `pipeline/out/eval_report.md` | 最新の評価レポート(診断表全文) |
+| `public/data/vocab_table.json` | 配信用語彙表(ビルド産物) |
 
 ## 運用メモ
 

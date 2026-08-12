@@ -6,3 +6,5 @@ dist/
 memo.txt
 agent-teams-docs.md
 corpus/
+.venv/
+pipeline/out/middata.json
