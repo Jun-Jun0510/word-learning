@@ -78,7 +78,19 @@ const diagTable = (g: Diag[]) => [
 const negLine = (x: { e: GoldEntry; r: any }) =>
   `| ${x.e.word} | ${x.r?.level ?? '(なし)'} | ${x.r?.bucket ?? '-'} | ${fmt(x.r?.fieldKey)} | ${fmt(x.r?.jsdAC, 4)} | ${fmt(x.r?.jsdAB, 4)} | ${fmt(x.r?.delta, 4)} | ${fmt(x.r?.rgRel, 3)} | ${x.r?.level === 'L3' ? '✗ 混入' : '✓'} |`
 
+// 発注者承認済みの既知の不一致(Phase 2a レビュー)。正解セット(凍結)は書き換えない
+const KNOWN_ISSUES = [
+  { word: 'augmentation', type: '既知の不一致', note: 'A に共起データがなく実質専門語として L2 判定される(L2 として表示はされるため実害小)。発注者の正解セット側で L3 指定が誤りの可能性も併記(zipf 3.0 は「見た目日常語」の下限ぎりぎり)。セットは凍結のまま維持' },
+  { word: 'greedy', type: 'A起因の取りこぼし', note: 'OpenSubtitles(会話コーパス)で共起が疎(jsdAC 過小)。会話に出にくい語の構造的弱点。held-out セットで同種の取りこぼしが再発したら A の補強を検討(発注者判断)' },
+]
+
 const report = `# Phase 2a 評価レポート
+
+> **注意: 本レポートの再現率は検証セットに対するものであり、汎化性能ではない。**
+> 凍結された20語に対して5イテレーションの改良を行ったため、この20語は適合済みの
+> 検証セットである。用途は「設計変更が既存の検出を壊していないかの回帰テスト」のみ。
+> 未知語に対する汎化性能を示すのは precision@50(手動採点)と、Phase 2b ゲート用
+> held-out セット(参照禁止)のみ。
 
 生成: build thresholds θd=${θd.toFixed(4)} θd2=${θd2.toFixed(4)} θk(fieldKey)=${θk.toFixed(2)}
 コーパス tokens: A=${mid.tokens.A.toLocaleString()} B=${mid.tokens.B.toLocaleString()} C=${mid.tokens.C.toLocaleString()}
@@ -114,11 +126,19 @@ ${negTopic.map(negLine).join('\n')}
 |---|---|---|---|---|---|---|---|---|
 ${negGeneral.map(negLine).join('\n')}
 
+## 既知の不一致(発注者承認済み。正解セットは凍結のまま)
+
+| 語 | 分類 | 備考 |
+|---|---|---|
+${KNOWN_ISSUES.map(k => `| ${k.word} | ${k.type} | ${k.note} |`).join('\n')}
+
 ## precision@50 手動採点用リスト(L3判定 score上位50、読者既知語除外)
 
 | # | 語 | score | bucket | collGeneral | collField |
 |---|---|---|---|---|---|
-${top50.map((r: any, i: number) => `| ${i + 1} | ${r.word} | ${r.score} | ${r.bucket} | ${(r.collGeneral ?? []).slice(0, 5).join(', ')} | ${(r.collField ?? []).slice(0, 5).join(', ')} |`).join('\n')}
+${top50.map((r: any, i: number) => `| ${i + 1} | ${r.word}${r.topicRisk ? ' ⚑' : ''} | ${r.score} | ${r.bucket} | ${(r.collGeneral ?? []).slice(0, 5).join(', ')} | ${(r.collField ?? []).slice(0, 5).join(', ')} |`).join('\n')}
+
+⚑ = 話題語疑いフラグ(語義証拠が弱いままL3入り。UIでも視覚的に区別する)
 `
 
 fs.writeFileSync('pipeline/out/eval_report.md', report)

@@ -311,6 +311,7 @@ async function main() {
     keynessB: number; keynessC: number; fieldKey: number
     jsdAC: number | null; jsdAB: number | null; delta: number | null; replaceGen: number | null; rgRel: number | null
     score: number; level: string; bucket: string
+    topicRisk?: boolean
     collGeneral?: string[]; collField?: string[]
   }
   const rows: Row[] = []
@@ -342,6 +343,9 @@ async function main() {
     }
     const pS = r && r.delta !== null ? pctRank(deltas, r.delta) : 0
     const pK = pctRank(fieldKeyHigh, fk)
+    // 話題語疑いフラグ(Phase 2a レビュー判断1): 語義証拠が弱いままL3入りした語を
+    // UIで視覚的に区別できるようにする(後で消せるフラグとして保持)
+    const topicRisk = level === 'L3' && bucket === 'freq+sense' && !(r && r.rgRel !== null && r.rgRel >= CFG.thetaRR)
     rows.push({
       word: w, zipf: zp, cntA: A.uni.get(w) ?? 0, cntB: B.uni.get(w) ?? 0, cntC,
       keynessB: +kBA.toFixed(2), keynessC: +kCA.toFixed(2), fieldKey: +fk.toFixed(2),
@@ -349,6 +353,7 @@ async function main() {
       delta: r?.delta != null ? +r.delta.toFixed(4) : null, replaceGen: r ? +r.replaceGen.toFixed(3) : null,
       rgRel: r?.rgRel != null ? +r.rgRel.toFixed(3) : null,
       score: +Math.max(pS, pK).toFixed(4), level, bucket,
+      ...(topicRisk ? { topicRisk: true } : {}),
       collGeneral: r?.collGeneral, collField: r?.collField,
     })
   }
@@ -376,6 +381,7 @@ async function main() {
   for (const x of [...l3, ...l2, ...l1b]) {
     entries[x.word] = {
       level: x.level, score: x.score,
+      ...(x.topicRisk ? { topicRisk: true } : {}),
       ...(x.level === 'L3' ? { collGeneral: x.collGeneral, collField: x.collField } : {}),
     }
   }

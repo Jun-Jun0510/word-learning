@@ -21,7 +21,10 @@
 | `docs/algorithm.md` | L3判定アルゴリズム(単独切り出し)。SCDの分野軸転用、手法比較(log-odds+Dirichlet / 文脈分布JSD 採用、BERT不採用)、話題語ガード(replaceGen)、分類ロジック、コーパス調達とライセンス、評価設計(正解セットYAML形式・再現率+適合率ゲート・取りこぼし切り分け)、PoC実施順 | 1 | 済(レビュー反映済み) |
 | `docs/review_phase1.md` | reviewer-agent による Phase 1 批判レビューの指摘21件と対応の記録 | 1 | 済 |
 | `docs/phase1_approval.md` | Phase 1 承認の**原文**。話題語ガードの条件a/b、L3-academic のレベル拡張性、L3表示上限20語と削り方、負例2種、2a完了報告物。Phase 2a 実装条件の一次ソース | 1 | 済 |
-| `docs/summary_phase2a_poc.md` | Phase 2a PoC 中間報告(統括)。ゲート数値(再現率90%/sense_shift 90%)、設計変更5イテレーションの経緯(delta・rgRel・談話標識ガード)、必須添付3点、設計プローブ(prior/mass)報告、残課題 | 2a | 済(precision@50 採点待ち) |
+| `docs/summary_phase2a_poc.md` | Phase 2a PoC 中間報告(統括)。ゲート数値、設計変更5イテレーションの経緯(delta・rgRel・談話標識ガード)、必須添付3点、設計プローブ(prior/mass)報告、残課題 ※再現率は検証セット値(汎化性能ではない。phase2a_review.md の訂正参照) | 2a | 済 |
+| `docs/phase2a_review.md` | Phase 2a レビューの**原文**。検証セット/汎化の訂正、判断3件(話題語混入許容+⚑フラグ、Cコーパス構成先行、語義スキーマ即決)、held-out 10語の運用 | 2a | 済 |
+| `docs/proposal_c_corpus.md` | Cコーパス構成の提案(承認待ち)。推奨=R60/L40・音響除外。収集方法(日付スライス)と before/after 検証計画 | 2a→2b | **承認待ち** |
+| `docs/proposal_sense_schema.md` | 語義単位スキーマの提案(承認待ち)。検出は語単位・ステータスは語義単位・未整備語はデフォルト語義。マイグレーション含む | 2a→2b | **承認待ち** |
 | `docs/setup_frontend.md` | フロントエンド選定理由と初期セットアップ手順(Q10) | 2b | 未着手(Phase 2b で作成) |
 
 ## pipeline/(コード・データ)

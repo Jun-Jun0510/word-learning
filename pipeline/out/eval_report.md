@@ -1,5 +1,11 @@
 # Phase 2a 評価レポート
 
+> **注意: 本レポートの再現率は検証セットに対するものであり、汎化性能ではない。**
+> 凍結された20語に対して5イテレーションの改良を行ったため、この20語は適合済みの
+> 検証セットである。用途は「設計変更が既存の検出を壊していないかの回帰テスト」のみ。
+> 未知語に対する汎化性能を示すのは precision@50(手動採点)と、Phase 2b ゲート用
+> held-out セット(参照禁止)のみ。
+
 生成: build thresholds θd=0.0373 θd2=0.0107 θk(fieldKey)=10.00
 コーパス tokens: A=38,540,515 B=6,559,676 C=3,360,019
 
@@ -62,6 +68,13 @@
 | increase | L1b | academic | -11.43 | 0.4950 | 0.5095 | -0.0145 | 0.134 | ✓ |
 | describe | L1b | academic | -14.99 | 0.3403 | 0.4953 | -0.1549 | 0.281 | ✓ |
 
+## 既知の不一致(発注者承認済み。正解セットは凍結のまま)
+
+| 語 | 分類 | 備考 |
+|---|---|---|
+| augmentation | 既知の不一致 | A に共起データがなく実質専門語として L2 判定される(L2 として表示はされるため実害小)。発注者の正解セット側で L3 指定が誤りの可能性も併記(zipf 3.0 は「見た目日常語」の下限ぎりぎり)。セットは凍結のまま維持 |
+| greedy | A起因の取りこぼし | OpenSubtitles(会話コーパス)で共起が疎(jsdAC 過小)。会話に出にくい語の構造的弱点。held-out セットで同種の取りこぼしが再発したら A の補強を検討(発注者判断) |
+
 ## precision@50 手動採点用リスト(L3判定 score上位50、読者既知語除外)
 
 | # | 語 | score | bucket | collGeneral | collField |
@@ -82,10 +95,10 @@
 | 14 | reasoning | 0.9995 | sense | flaw, prof, complex, society, claim | flawed, deductive, unfaithful, precede, mathematical |
 | 15 | humanoid | 0.9995 | sense | anatomy, comparative, observing, isolated, physic | full-size, soccer, athletic, booster, miniature |
 | 16 | manipulation | 0.9995 | sense | genetic, profile, limit, surgical, involving | chord, preparatory, cloth, pouring, dom |
-| 17 | experiment | 0.9994 | freq+sense | magnetism, persistence, crude, vulnerability, conducted | extensive, opt, reverie, conducted, gibson |
+| 17 | experiment ⚑ | 0.9994 | freq+sense | magnetism, persistence, crude, vulnerability, conducted | extensive, opt, reverie, conducted, gibson |
 | 18 | motion | 0.9994 | sense | moreover, detecting, acceptance, stand-up, reproductive | pebble, sickness, blur, venom, dance |
 | 19 | propose | 0.9993 | sense | moreover, interval, motion, recover, sponsor | ware, dreaming, address, overcome, lucid |
-| 20 | robot | 0.9993 | freq+sense | oversized, neutralized, deactivate, on-line, hydraulic | andrea, concentric, drama, nico, pepper |
+| 20 | robot ⚑ | 0.9993 | freq+sense | oversized, neutralized, deactivate, on-line, hydraulic | andrea, concentric, drama, nico, pepper |
 | 21 | planning | 0.9992 | sense | assisting, annihilation, wholesale, hungary, reviewing | footstep, lazy, path, nav, retraction |
 | 22 | visual | 0.9992 | sense | tasking, cortex, degrading, induce, stimulation | ventral, auditory, cortex, distraction, foresight |
 | 23 | existing | 0.9992 | sense | challenging, matrix, destroyed, stopped, copy | plugged, resort, predominantly, mainly, either |
@@ -97,7 +110,7 @@
 | 29 | success | 0.9989 | sense | departs, locating, dubious, anticipated, probability | rate, defended, sr, average, remarkable |
 | 30 | language | 0.9989 | sense | slavic, subtlety, cambridge, asian, foreign | african, large, west, hindi, natural |
 | 31 | autonomous | 0.9989 | sense | bot, programmed, department, we're | abu, sailboat, valet, league, racing |
-| 32 | safety | 0.9988 | freq+sense | deactivate, workplace, disengage, constraint, guarantee | gymnasium, aviation, shield, assurance, comfort |
+| 32 | safety ⚑ | 0.9988 | freq+sense | deactivate, workplace, disengage, constraint, guarantee | gymnasium, aviation, shield, assurance, comfort |
 | 33 | reward | 0.9987 | sense | misinformation, finder, lira, collect, deposited | hacking, gallop, shaping, rm, meticulous |
 | 34 | imitation | 0.9987 | sense | tradition, form, fair, giving, pretty | ail, il, learning, acquire, revisit |
 | 35 | improves | 0.9987 | sense | skill, progress, view, lack, experience | bon, saga, consistently, pact, success |
@@ -116,3 +129,5 @@
 | 48 | prediction | 0.9981 | freq+sense | generalized, vague, initiate, remarkable, deny | hi, mortality, icu, deteriorate, glucose |
 | 49 | representation | 0.9981 | freq+sense | trait, holographic, extreme, legal, wish | bird's, bird's-eye, probed, bev, smile |
 | 50 | token | 0.998 | sense | lan, compatible, configuration, regard, musical | attended, trillion, sent, distracting, attend |
+
+⚑ = 話題語疑いフラグ(語義証拠が弱いままL3入り。UIでも視覚的に区別する)
