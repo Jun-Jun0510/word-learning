@@ -96,6 +96,7 @@ word-learning/
   "entries": {
     "kernel": {
       "level": "L3",            // "L3" | "L2" | "L1b"(L1aは含めない=サイズ削減)
+                                 // 型は拡張可能に定義: Phase 3 で "L3-academic" を追加できる形(実装はしない)
       "domainSense": "a function measuring similarity between data points (SVM/GP context)",
       "contrast": "not the seed/core of a nut — in ML it's a similarity function",
       "ja": "カーネル(類似度関数)",     // トグル表示用
