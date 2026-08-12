@@ -1,0 +1,184 @@
+# 評価用正解セット — ohatajun 作成(2026-08-13 受領)
+#
+# ステータス: ★凍結★
+#   実装のチューニング中に本ファイルを変更してはならない。
+#   拾えない語が出たときに正解セット側を直すと検証が死ぬ。
+#   不適切な語があると判断した場合も勝手に消さず、理由を添えて発注者に報告する。
+#
+# domain: cs.RO + cs.LG
+# reader: 制御・パワエレ出身。以下は既知のため本セットから除外済み。
+#   評価時に false positive として数えてもいけない:
+#   plant, gain, observer, regular, horizon, state
+#
+# expected_signal(4値。algorithm.md §6-1 はこの4値に拡張済み):
+#   sense_shift : 頻度不変・語義ズレ。頻度比では原理的に拾えない層。
+#                 JSD側の設計が効いているかの唯一の指標(群別再現率を独立報告)
+#   both        : 頻度・語義とも動く
+#   topic_only  : 共起は激変するが語義不変(負例・話題語型)→ 話題語ガードの検証
+#   none        : 頻度も語義も動かない(負例・一般語型)→ 候補プール入口の検証
+#
+# 設計プローブ(バグとして握り潰さず、問題が出たら設計判断として報告する):
+#   prior : 品詞で語義が変わる(形容詞=以前の / 名詞=事前分布)。品詞タグの要否の判断材料
+#   mass  : 分野内でも多義(確率質量/物理質量)。語単位1エントリか語義単位複数エントリかの
+#           データ構造問題が露出するはず
+
+positives:
+  - word: return
+    expected_level: L3
+    expected_signal: sense_shift
+    general_sense: "戻る、返却する"
+    field_sense: "収益(割引累積報酬)。RL の中心量"
+    notes: "一般頻度が極めて高く分野頻度は上がらない。頻度比では絶対に拾えない最重要ケース"
+
+  - word: support
+    expected_level: L3
+    expected_signal: sense_shift
+    general_sense: "支援する"
+    field_sense: "分布の台(確率密度が非ゼロの領域)"
+    notes: "「support of the distribution」を支援と読むと全文が崩れる"
+
+  - word: mass
+    expected_level: L3
+    expected_signal: sense_shift
+    general_sense: "質量、大量の"
+    field_sense: "確率質量(probability mass)"
+    notes: "機械系出身ほど質量で読む。cs.RO 内では本物の質量も出るため分野内でも多義"
+
+  - word: hard
+    expected_level: L3
+    expected_signal: sense_shift
+    general_sense: "難しい、硬い"
+    field_sense: "hard negative(対照学習で意図的に選ぶ紛らわしい負例)"
+    notes: "「難しい負例」と訳せてしまうため誤読に気づけない"
+
+  - word: tight
+    expected_level: L3
+    expected_signal: sense_shift
+    general_sense: "きつい"
+    field_sense: "上界が真値に近い(tight bound)"
+    notes: "頻度が動かない典型"
+
+  - word: regret
+    expected_level: L3
+    expected_signal: sense_shift
+    general_sense: "後悔"
+    field_sense: "最適方策との累積損失差。定量的な指標"
+    notes: "感情語として読み飛ばされる"
+
+  - word: collapse
+    expected_level: L3
+    expected_signal: sense_shift
+    general_sense: "崩壊する"
+    field_sense: "mode collapse / representation collapse(多様性や次元が潰れる現象)"
+
+  - word: greedy
+    expected_level: L3
+    expected_signal: sense_shift
+    general_sense: "欲張りな"
+    field_sense: "各時点で最大価値を選ぶ方策(ε-greedy)"
+
+  - word: primitive
+    expected_level: L3
+    expected_signal: sense_shift
+    general_sense: "原始的な、未発達な"
+    field_sense: "motion primitive(動作の最小構成単位)"
+    notes: "否定的な語として読むと意味が反転する"
+
+  - word: flat
+    expected_level: L3
+    expected_signal: sense_shift
+    general_sense: "平らな"
+    field_sense: "flat minima(汎化性能と結びつく損失地形の性質)"
+
+  - word: head
+    expected_level: L3
+    expected_signal: both
+    general_sense: "頭、責任者"
+    field_sense: "attention head / action head(ネットワーク末端の出力機構)"
+
+  - word: grounding
+    expected_level: L3
+    expected_signal: both
+    general_sense: "根拠づけ/接地(電気)"
+    field_sense: "言語や記号を物理世界の対象に結びつけること"
+    notes: "電気系出身はアースで読む。VLA 文脈で頻出"
+
+  - word: manipulation
+    expected_level: L3
+    expected_signal: both
+    general_sense: "巧妙に操る、世論操作(否定的)"
+    field_sense: "物体操作。価値中立な技術用語"
+
+  - word: demonstration
+    expected_level: L3
+    expected_signal: both
+    general_sense: "デモ、実演"
+    field_sense: "模倣学習の教師軌道データそのもの"
+
+  - word: prior
+    expected_level: L3
+    expected_signal: both
+    general_sense: "前の、以前の"
+    field_sense: "事前分布"
+    notes: "形容詞と名詞で品詞が変わる。品詞タグが判定に効くか確認したい"
+
+  - word: policy
+    expected_level: L3
+    expected_signal: both
+    general_sense: "政策、方針"
+    field_sense: "状態から行動への写像"
+
+  - word: value
+    expected_level: L3
+    expected_signal: both
+    general_sense: "値、価値"
+    field_sense: "価値関数(期待収益)"
+
+  - word: attention
+    expected_level: L3
+    expected_signal: both
+    general_sense: "注意、注目"
+    field_sense: "系列内の重み付き参照機構"
+
+  - word: dense
+    expected_level: L3
+    expected_signal: both
+    general_sense: "密集した"
+    field_sense: "dense reward(毎ステップ与える報酬)/全結合層"
+    notes: "会話で例示済みのため汚染あり。差し替え候補"
+
+  - word: augmentation
+    expected_level: L3
+    expected_signal: both
+    general_sense: "増強"
+    field_sense: "学習データの人工的な変換増殖"
+
+negatives:
+  # 話題語型 — 共起分布は激変するが語義は不変。誤読を生まない。
+  # 話題語ガードがこれを弾けるかを測る
+  - word: robot
+    expected_level: not_L3
+    expected_signal: topic_only
+  - word: controller
+    expected_level: not_L3
+    expected_signal: topic_only
+  - word: dataset
+    expected_level: not_L3
+    expected_signal: topic_only
+  - word: benchmark
+    expected_level: not_L3
+    expected_signal: topic_only
+  - word: simulation
+    expected_level: not_L3
+    expected_signal: topic_only
+
+  # 一般語型 — 頻度も語義も動かない。候補プールの入口が効くかを測る
+  - word: however
+    expected_level: not_L3
+    expected_signal: none
+  - word: increase
+    expected_level: not_L3
+    expected_signal: none
+  - word: describe
+    expected_level: not_L3
+    expected_signal: none

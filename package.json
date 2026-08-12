@@ -1,0 +1,35 @@
+{
+  "name": "word-learning",
+  "version": "1.0.0",
+  "description": "英語の論文・技術記事を「翻訳せずに読む」ための、事前単語学習アプリ。",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "fetch:c": "tsx pipeline/fetch/fetch_arxiv.ts --profile C",
+    "fetch:b": "tsx pipeline/fetch/fetch_arxiv.ts --profile B",
+    "fetch:a": "bash pipeline/fetch/fetch_general.sh"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Jun-Jun0510/word-learning.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Jun-Jun0510/word-learning/issues"
+  },
+  "homepage": "https://github.com/Jun-Jun0510/word-learning#readme",
+  "devDependencies": {
+    "@types/js-yaml": "^4.0.9",
+    "@types/node": "^26.2.0",
+    "fast-xml-parser": "^5.10.1",
+    "js-yaml": "^5.2.3",
+    "tsx": "^4.23.12",
+    "typescript": "^7.0.2"
+  },
+  "private": true,
+  "type": "module"
+}

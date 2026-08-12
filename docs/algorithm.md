@@ -112,35 +112,50 @@
 
 ## 6. 評価設計
 
-### 6-1. 正解セットの形式(これが決まり次第、発注者が20語を記入)
+### 6-1. 正解セット(受領済み・凍結)
 
-YAML配列(`eval/goldset.yaml`)。**`expected_signal` が切り分けレポートの肝**。
+**実データ: `pipeline/eval/ground_truth.yaml`(発注者作成、2026-08-13 受領)。★凍結★ — チューニング中の変更禁止。不適切な語があると判断した場合も勝手に変更せず理由を添えて発注者に報告する。**
+
+単一ファイルに `positives`(20語)/ `negatives`(8語)の2群。`expected_signal` は発注者の定義に合わせ**4値に拡張**:
+
+| expected_signal | 意味 | 検証対象 |
+|---|---|---|
+| `sense_shift` | 頻度不変・語義ズレ。頻度比では原理的に拾えない層(10語) | **JSD側の設計の唯一の指標** |
+| `both` | 頻度・語義とも動く(10語) | 全体 |
+| `frequency_shift` | 頻度のみ(現セットでは0語。将来用) | keyness側 |
+| `topic_only` | 負例・話題語型: 共起激変・語義不変(robot 等5語) | 話題語ガード |
+| `none` | 負例・一般語型: 頻度も語義も不変(however 等3語) | 候補プール入口 |
 
 ```yaml
-- word: sound
-  expected_level: L3          # L3 / L2 / L1b / L1a
-  field_sense: "健全性(soundness/well-posedness)、安定"
-  general_sense: "音、鳴る"
-  expected_signal: sense_shift  # frequency_shift / sense_shift / both
-  general_collocates: [loud, hear, wave]        # 任意(診断の答え合わせ用)
-  field_collocates: [stability, proof, controller]  # 任意
-  notes: "頻度不変・語義ズレの典型。頻度比では絶対に漏れる"
+positives:
+  - word: return
+    expected_level: L3          # 型は L3-academic を将来追加可能な拡張可能列挙
+    expected_signal: sense_shift
+    general_sense: "戻る、返却する"
+    field_sense: "収益(割引累積報酬)。RL の中心量"
+    notes: "頻度比では絶対に拾えない最重要ケース"
+negatives:
+  - word: robot
+    expected_level: not_L3
+    expected_signal: topic_only
 ```
 
-- 必須: `word, expected_level, field_sense, general_sense, expected_signal`。任意: collocates, notes
-- **注意(§7-B)**: 学術レジスタ型の語義ズレ語(significant=有意, control=対照群)は Phase 2 では検出機構がないため**正解セットに混ぜない**(混ぜると再現率が機構外要因で汚れる)。
-- **負例セットも同形式で別ファイル**(`eval/negatives.yaml`、`expected_level: not_L3`)。負例は意図的に2種類に分け、`negative_type` フィールドで区別する(承認条件):
-  - `negative_type: topic` — 話題語型(robot, controller のように共起は激変するが語義不変)→ **話題語ガードの効き**を測る
-  - `negative_type: general` — 一般語型(頻度も語義も動かない語。the, house 等)→ **候補プールの効き**を測る
+- **読者既知語**(plant, gain, observer, regular, horizon, state)はセットに含めず、**評価で false positive として数えてもいけない**(ローダーが混入を検証)。
+- 学術レジスタ型(significant=有意 等)は §7-B により正解セットに混ぜない。
+- パースは `pipeline/eval/load_ground_truth.ts` が担い、スキーマ違反で即時失敗する(実装より先にパースを通す、の指示に対応。確認済み)。
 
 ### 6-2. 評価ゲート(再現率 AND 適合率)
 
 | 指標 | 定義 | 目標 |
 |---|---|---|
-| 再現率 | 正解L3 20語中、L3判定できた数 / 20 | **≥70%(≥14語)** |
+| 再現率(全体) | 正解L3 20語中、L3判定できた数 / 20 | **≥70%(≥14語)** |
+| **再現率(sense_shift群)** | sense_shift 10語中、L3判定できた数 / 10。**独立指標として必ず報告** | **<30% なら log-odds チューニングでは解決しない=JSD側の設計をやり直す**(発注者指示) |
 | 適合率 | システムのL3判定スコア上位50語を手動採点した precision@50 | **≥60%(暫定)** |
 | 話題語混入率 | 上位50語中の話題語(語義不変の分野頻出語)の割合 | 計測必須(目標はPoC後に設定) |
 
+- **群別報告の義務(発注者指示)**:
+  - positives は **sense_shift 群を分けて報告**する。全体再現率は both 群10語で水増しされて判断を誤るため、sense_shift 群の再現率が JSD 設計の成否を判定する唯一の数字。
+  - negatives も **2群を分けて報告**する。話題語型5語のL3混入=**話題語ガードの失敗**、一般語型3語の混入=**候補プール入口の失敗**。原因が別なので混ぜない。
 - 再現率だけでは偽陽性の氾濫(予習時間の破綻・危険語信号の希釈)を検出できないため、**ゲートは再現率と適合率の両方**。
 - 閾値の決め方: スコア分布の形状(肘・分位点)で先に決定し、正解セットは検証専用に隔離(20語への過適合=リークを防ぐ)。負例セットで適合率の暴走を監視。
 
@@ -197,3 +212,6 @@ YAML配列(`eval/goldset.yaml`)。**`expected_signal` が切り分けレポー�
 5. **分野軸SCDの公表精度数値は乏しい**: 70%/60% 目標は他タスク(SemEval)からの外挿。Phase 2a の実測まで確定しない。切り分けレポートが最初のイテレーションで効く設計にしてある。
 6. arXiv abstract の **LaTeX・数式・引用マクロの前処理**が実地検証の成否に直結(仕様は architecture.md §3 tokenize / pipeline 前処理に記載)。
 7. SGNS採用時(増強パス3)の訓練分散 → 複数シード平均 or 低次元(d=5でも高性能の報告あり)。
+8. **設計プローブ(正解セットに意図的に埋め込まれた設計問題。バグとして握り潰さず設計判断として報告する)**:
+   - `prior`: 品詞で語義が変わる(形容詞=以前の/名詞=事前分布)。現設計は品詞タグなしのユニグラムであり、この語で問題が出れば品詞タグ導入の要否を判断する。
+   - `mass`: 分野内でも多義(確率質量/物理質量)。現設計は語単位1エントリであり、語義単位の複数エントリ化が要るかのデータ構造問題がここで露出する。
