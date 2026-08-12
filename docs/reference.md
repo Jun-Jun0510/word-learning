@@ -18,7 +18,8 @@
 | `docs/requirements.md` | 要件定義。ユーザーストーリー / レベル定義(二軸) / 機能・非機能要件 / スコープ・非スコープ / 成功指標 / リスク | 0 | 済 |
 | `docs/research_competitors.md` | 競合調査(requirements-agent)。Readlang/LingQ/Anki/Yomitan/DeepL+語彙プロファイラ系9ツール。結論: L3の切り口は空白地帯、最大リスクはL3検出精度 | 0 | 済 |
 | `docs/architecture.md` | 設計。ビルド時/実行時の分離、データフロー(Mermaid)、モジュール分割、vocab_table・単語帳DBのデータ設計、技術選定理由、リスク、Phase 2 実装順 | 1 | 済 |
-| `docs/algorithm.md` | L3判定アルゴリズム(単独切り出し)。SCD(意味変化検出)の分野軸転用、手法比較(log-odds+Dirichlet / PPMI+JSD 採用、BERT不採用)、分類ロジック・復活パス、コーパス調達とライセンス、評価設計(正解セットYAML形式・再現率・取りこぼし4段切り分け) | 1 | 済(reviewer-agent レビュー中) |
+| `docs/algorithm.md` | L3判定アルゴリズム(単独切り出し)。SCDの分野軸転用、手法比較(log-odds+Dirichlet / 文脈分布JSD 採用、BERT不採用)、話題語ガード(replaceGen)、分類ロジック、コーパス調達とライセンス、評価設計(正解セットYAML形式・再現率+適合率ゲート・取りこぼし切り分け)、PoC実施順 | 1 | 済(レビュー反映済み) |
+| `docs/review_phase1.md` | reviewer-agent による Phase 1 批判レビューの指摘21件と対応の記録。発注者判断待ちの論点3つを含む | 1 | 済 |
 | `docs/setup_frontend.md` | フロントエンド選定理由と初期セットアップ手順(Q10) | 2 | 未着手(Phase 2 で作成) |
 
 ## 運用メモ

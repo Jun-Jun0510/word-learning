@@ -11,8 +11,8 @@
 flowchart LR
   subgraph build["ビルド時(Node / ローカル or GitHub Actions)"]
     A1[コーパスA 頻度<br/>wordfreq] --> P[corpus-pipeline<br/>集計・二軸分類]
-    A2[コーパスA 共起用生テキスト<br/>Wikipedia等 ※頻度リストに共起はない] --> P
-    B[コーパスB<br/>arXiv全分野サンプル] --> P
+    A2[コーパスA 共起用生テキスト<br/>OpenSubtitles ※頻度リストに共起はない<br/>※Wikipediaは技術語義混入のため不採用] --> P
+    B[コーパスB<br/>arXiv全分野サンプル<br/>※cs.RO/cs.LGは除外] --> P
     C[コーパスC<br/>arXiv cs.RO+cs.LG] --> P
     P --> V[vocab_table.json<br/>目標1MB以下]
     P --> D[debug_l1a.json<br/>L1a落ち上位N件]
@@ -59,7 +59,7 @@ word-learning/
 │   └── vocab_table.json    # 焼き込み済み語彙表(配信物)
 ├── src/
 │   ├── core/
-│   │   ├── tokenize.ts     # トークナイズ+レンマ化(レンマ表はvocab_tableに同梱)
+│   │   ├── tokenize.ts     # 前処理+トークナイズ+レンマ表照合(方針は§3.1)
 │   │   ├── classify.ts     # 照合とレベル付与・文書内出現文抽出
 │   │   └── types.ts        # VocabEntry / WordbookEntry 等の型定義
 │   ├── store/
@@ -76,6 +76,15 @@ word-learning/
 
 依存方向: `ui → store/core → types`。core はDOMに依存しない純関数(テスト容易性のため)。pipeline と src は vocab_table.json のスキーマ(types.ts を共有)だけで接続。
 
+### 3.1 テキスト前処理・トークナイズ方針(pipeline と実行時で共通)
+
+- **LaTeX前処理**: arXiv abstract には `$...$`(数式)、`\alpha` 等のコマンド、`\citep{}` 等のマクロが混入する。トークナイズ前段で「インライン数式・LaTeXコマンド・引用マクロの除去」を行う(`mathcal`, `textbf` 等がゴミ語として分類対象に入るのを防ぐ)。pipeline のコーパス前処理と実行時の貼り付けテキスト前処理で同じ実装を共有する
+- **ユニグラムのみ**: フレーズ・複合語(loss function, support vector)は Phase 2 非スコープ(設計判断として明示。二軸モデルはユニグラム前提)
+- **小文字化**して照合(文頭大文字と固有名詞の区別は Phase 2 では行わない)
+- **ハイフン語**(model-free, closed-loop): まず1トークンとして照合し、レンマ表未収載ならハイフン分割して各要素で再照合
+- **レンマ化**: ブラウザに形態素解析器を持ち込まず、ビルド時に **wink-lemmatizer**(Node)で候補語の変化形を展開したレンマ表を vocab_table に同梱。**英米綴りの正規化**(behaviour→behavior, optimise→optimize)もレンマ表に含める
+- **照合漏れの計測**: 評価スクリプトと実行時デバッグで「入力トークンのレンマ表未ヒット率」をログ出力し、レンマ表の被覆不足を検出可能にする
+
 ## 4. データ設計
 
 ### 4.1 vocab_table.json(ビルド時産物、配信)
@@ -90,9 +99,9 @@ word-learning/
       "domainSense": "a function measuring similarity between data points (SVM/GP context)",
       "contrast": "not the seed/core of a nut — in ML it's a similarity function",
       "ja": "カーネル(類似度関数)",     // トグル表示用
-      "score": 0.82,             // 横軸スコア(ソート用、詳細は algorithm.md)
-      "collGeneral": ["free", "blood", "take"],          // 一般英語での共起(説明素材)
-      "collField": ["distribution", "i.i.d.", "minibatch"] // 分野での共起(説明素材)
+      "score": 0.82,             // 合成危険度スコア(ソート用。合成式は algorithm.md §3)
+      "collGeneral": ["corn", "seed", "truth"],           // 一般英語での共起(説明素材)
+      "collField": ["function", "gaussian", "svm"]        // 分野での共起(説明素材)
     }
   },
   "lemma": { "kernels": "kernel", "denoted": "denote" }   // 変化形→見出し語
@@ -126,7 +135,10 @@ word-learning/
 ```
 
 - キーは見出し語(レンマ)。CSV(Anki)展開可能なフラット構造
+- **docId は正規化テキストの内容ハッシュ**(例: SHA-256 先頭12桁)。同一文書の再貼付を同一視し、count / sources の水増し(重複エントリ)を防ぐ
+- **インポートはマージ**(置換ではない): 語単位で `sources` を docId で和集合、`count` は同一docIdなら大きい方、`status` はより進んだ方(new < learning < known)を採用。復旧(全消失後のインポート)もマージで自然に成立する
 - **上限時の挙動**: 保存前に容量を試算し、閾値(4MB)超過で警告バナー+エクスポート促し。`sources` は語ごとに直近10文書まで(超過分は古い順に `count` へ集約して文情報を落とす)。保存失敗(QuotaExceededError)時はメモリ上で継続し、エクスポートを強制提案
+- **iOS Safari の ITP リスク**: 7日間無操作で localStorage が消去され得る(主ターゲット端末で核心資産が上限超過なしでも消える経路)。対策: 初回利用時と定期(例: 文書5本ごと)のエクスポート促し。恒久対策として将来PWA化を検討
 
 ## 5. 技術選定と理由
 
@@ -167,13 +179,14 @@ flowchart LR
 | 4 | レンマ化の精度(ブラウザ内) | 照合漏れ→抽出漏れ | ビルド時生成のレンマ表で主要変化形をカバー。評価スクリプトで照合漏れも計測 |
 | 5 | vocab_table のサイズ超過 | 上限5MB違反 | L1a非収載・語義文の文字数上限・gzip実測をpipelineでチェック(超過でビルド失敗させる) |
 | 6 | localStorage 逼迫・消失 | 蓄積資産の喪失 | §4.2 の上限設計 + JSONエクスポート/インポート(Phase 2 必須) |
-| 7 | 個人開発の時間切れ | 完成しない | Phase 2 は「貼る→リストが出る」を最優先。読了後チェックは落としてよい唯一の候補(Phase 3送り可) |
+| 7 | 個人開発の時間切れ | 完成しない | Phase 2 を 2a(エンジン+評価)/ 2b(最小UI)/ 2c(蓄積・保全)に分割し、各段が単独で動く・測れる状態にする(requirements §8)。読了後チェックは最小版(○/×1タップ)を 2c に残す(主指標の計測装置のため落とさない) |
+| 8 | iOS Safari ITP による localStorage 消去 | 蓄積資産の喪失(上限超過なしでも) | §4.2 のエクスポート促し。将来PWA化 |
 
-## 8. Phase 2 実装順(提案)
+## 8. Phase 2 実装順(requirements §8 の 2a/2b/2c に対応)
 
-1. pipeline 最小版: コーパス取得→頻度統計→二軸分類→vocab_table.json(算法は algorithm.md の最小構成)
-2. 評価スクリプト+正解セット20語で精度確認 ← **ここで一度レビュー(精度が出なければUIに進まない)**
-3. フロント骨格: 貼り付け→照合→予習リスト表示
-4. 単語帳DB+3値ステータス+2モードUI
-5. JSONエクスポート/インポート
-6. arXiv abstract 3本で実地検証 → レビュー
+1. **[2a]** pipeline 最小版: コーパス調達(A共起=OpenSubtitles、B/C=Kaggle arXiv)→前処理→2信号+話題語ガード→vocab_table.json
+2. **[2a]** 評価スクリプト+正解セット20語+負例 → 話題語混入率の実測 → **評価ゲート(再現率≥70% AND precision@50≥60%)。ここで一度レビュー。通過までUIに進まない**
+3. **[2b]** フロント骨格: 貼り付け→前処理・照合→L3/L2リスト表示(単一画面)
+4. **[2b]** arXiv abstract 3本で実地検証 → レビュー
+5. **[2c]** 単語帳DB+3値ステータス+2モードUI
+6. **[2c]** JSONエクスポート/インポート+読了後チェック最小版
