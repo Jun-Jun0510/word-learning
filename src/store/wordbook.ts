@@ -10,7 +10,12 @@ import type { VocabEntry } from '../core/types'
 export type Status = 'new' | 'learning' | 'known'
 const ORDER: Status[] = ['new', 'learning', 'known']
 
-export interface SenseState { status: Status; updatedAt: string }
+export interface SenseState {
+  status: Status
+  updatedAt: string
+  /** 読了後チェックの記録(requirements §5.6。主指標の計測装置) */
+  selfCheck?: Array<{ docId: string; correct: boolean; at: string }>
+}
 export interface WordState {
   level: string
   sources: Array<{ docId: string; title: string; count: number; sentence: string }>
@@ -111,6 +116,29 @@ export function aggregateStatus(st: WordState | undefined): Status {
   if (ss.length && ss.every(x => x === 'known')) return 'known'
   if (ss.some(x => x !== 'new')) return 'learning'
   return 'new'
+}
+
+/** 読了後チェックの○/×記録(語単位の操作を全語義に反映。同一docIdは上書き) */
+export function recordCheck(wb: Wordbook, docId: string, key: string, correct: boolean): Wordbook {
+  const st = wb.words[key]
+  if (!st) return wb
+  const at = now()
+  for (const ss of Object.values(st.senses)) {
+    ss.selfCheck = (ss.selfCheck ?? []).filter(c => c.docId !== docId)
+    ss.selfCheck.push({ docId, correct, at })
+  }
+  st.updatedAt = at
+  return wb
+}
+
+/** 文書の読了後チェック集計(主指標: L3語の自己採点正答率80%が目標) */
+export function checkStats(wb: Wordbook, docId: string): { checked: number; correct: number } {
+  let checked = 0, correct = 0
+  for (const st of Object.values(wb.words)) {
+    const c = Object.values(st.senses)[0]?.selfCheck?.find(x => x.docId === docId)
+    if (c) { checked++; if (c.correct) correct++ }
+  }
+  return { checked, correct }
 }
 
 export function exportJson(wb: Wordbook): string { return JSON.stringify(wb, null, 1) }

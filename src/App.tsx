@@ -136,6 +136,53 @@ function Prestudy({ result, wb, debug, onCycle, onOpen }: {
   )
 }
 
+/**
+ * 読了後チェック(requirements §5.6 最小版): 文書のL3語を○/×で1タップ自己採点。
+ * 予習中に日本語訳を開いた語を優先的に先頭へ(architecture §7.2 の連携)。
+ * 主指標「正答率80%」の計測装置。
+ */
+function PostReadCheck({ wb, onCheck }: { wb: WB.Wordbook; onCheck: (docId: string, key: string, correct: boolean) => void }) {
+  const docs = Object.entries(wb.docs).sort((a, b) => b[1].addedAt.localeCompare(a[1].addedAt))
+  const [docId, setDocId] = useState(docs[0]?.[0] ?? '')
+  if (!docs.length) return <p className="mt-4 text-sm text-gray-400">まだ文書がありません。予習タブで解析してください。</p>
+  const opened = new Set(wb.docs[docId]?.opened ?? [])
+  const words = Object.entries(wb.words)
+    .filter(([, st]) => st.level === 'L3' && st.sources.some(s => s.docId === docId))
+    .sort((a, b) => (opened.has(b[0]) ? 1 : 0) - (opened.has(a[0]) ? 1 : 0))
+  const stats = WB.checkStats(wb, docId)
+  const mark = (key: string) => Object.values(wb.words[key]?.senses ?? {})[0]?.selfCheck?.find(c => c.docId === docId)
+  return (
+    <section className="mt-4">
+      <select className="border rounded p-1 text-sm w-full" value={docId} onChange={e => setDocId(e.target.value)}>
+        {docs.map(([id, d]) => <option key={id} value={id}>{d.title}({d.addedAt})</option>)}
+      </select>
+      <p className="text-sm mt-2">
+        読中に「正しい分野固有の意味」で解釈できていたか? —
+        採点 {stats.checked}/{words.length} 語
+        {stats.checked > 0 && <> / 正答率 <strong>{Math.round((100 * stats.correct) / stats.checked)}%</strong>(目標80%)</>}
+      </p>
+      <ul className="mt-2">
+        {words.map(([k, st]) => {
+          const m = mark(k)
+          const sense = Object.keys(st.senses)[0]
+          return (
+            <li key={k} className={`border-b border-gray-100 py-2 flex items-center gap-2 ${m ? 'opacity-60' : ''}`}>
+              <span className="font-semibold">{k}</span>
+              {opened.has(k) && <span className="text-xs text-orange-500" title="予習で訳を開いた語">開</span>}
+              <span className="ml-auto flex gap-1">
+                <button className={`px-3 py-1 rounded border ${m?.correct === true ? 'bg-green-600 text-white' : ''}`}
+                  onClick={() => onCheck(docId, k, true)}>○</button>
+                <button className={`px-3 py-1 rounded border ${m?.correct === false ? 'bg-red-600 text-white' : ''}`}
+                  onClick={() => onCheck(docId, k, false)}>×</button>
+              </span>
+            </li>
+          )
+        })}
+      </ul>
+    </section>
+  )
+}
+
 function WordbookView({ wb, onCycle }: { wb: WB.Wordbook; onCycle: (key: string, sid: string) => void }) {
   const [levelF, setLevelF] = useState<string>('all')
   const [statusF, setStatusF] = useState<string>('all')
@@ -180,7 +227,7 @@ export default function App() {
   const [result, setResult] = useState<AnalysisResult | null>(null)
   const [docId, setDocId] = useState('')
   const [debug, setDebug] = useState(false)
-  const [tab, setTab] = useState<'prestudy' | 'wordbook'>('prestudy')
+  const [tab, setTab] = useState<'prestudy' | 'wordbook' | 'check'>('prestudy')
   const [wb, setWb] = useState<WB.Wordbook>(() => WB.load())
   const [saveError, setSaveError] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
@@ -235,6 +282,7 @@ export default function App() {
       <div className="flex gap-2 mb-3">
         <button className={`px-3 py-1 rounded ${tab === 'prestudy' ? 'bg-blue-600 text-white' : 'border'}`} onClick={() => setTab('prestudy')}>予習</button>
         <button className={`px-3 py-1 rounded ${tab === 'wordbook' ? 'bg-blue-600 text-white' : 'border'}`} onClick={() => setTab('wordbook')}>単語帳</button>
+        <button className={`px-3 py-1 rounded ${tab === 'check' ? 'bg-blue-600 text-white' : 'border'}`} onClick={() => setTab('check')}>読了後チェック</button>
         <span className="ml-auto flex gap-2 items-center">
           <button className="text-xs border rounded px-2 py-1" onClick={doExport}>エクスポート</button>
           <button className="text-xs border rounded px-2 py-1" onClick={() => fileRef.current?.click()}>インポート</button>
@@ -269,6 +317,7 @@ export default function App() {
         </>
       )}
       {tab === 'wordbook' && <WordbookView wb={wb} onCycle={onCycle} />}
+      {tab === 'check' && <PostReadCheck wb={wb} onCheck={(d, k, c) => persist(WB.recordCheck(wb, d, k, c))} />}
     </main>
   )
 }
