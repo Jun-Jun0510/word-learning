@@ -63,9 +63,16 @@ export function analyze(text: string, table: VocabTable): AnalysisResult {
   let matched = 0
   for (const s of displaySentences(stripLatex(text))) {
     const raws = tokenizeRaw(s)
-    for (const raw of raws) {
+    for (let i = 0; i < raws.length; i++) {
+      const raw = raws[i]
       totalTokens++
       const surface = raw.toLowerCase()
+      // 実行時固有名詞ヒューリスティック(2026-08-13 承認・条件付き):
+      // 文中(文頭以外)の大文字始まりトークンは固有名詞・手法名・ベンチマーク名の可能性が高い
+      // (LIBERO-Long++ の "Long" 等)。スキップすると Transformer / Gaussian / Jacobian 等の
+      // 正規の大文字専門語まで落ちるため、語の抽出・表示は残し「tf カウントから除外」のみ行う。
+      // これで断片による順位の水増しを防ぐ(long 問題)。凍結対象外の実行時前処理
+      const properish = i > 0 && /^[A-Z]/.test(raw)
       let keys: string[] = []
       const direct = resolve(table, surface)
       if (direct) keys = [direct]
@@ -78,7 +85,7 @@ export function analyze(text: string, table: VocabTable): AnalysisResult {
       for (const key of keys) {
         const prev = found.get(key)
         if (prev) {
-          prev.count++
+          if (!properish) prev.count++   // 固有名詞的出現は tf に数えない(抽出・表示は維持)
           // 出現文の選定基準(修正2c、algorithm.md §3.4): 「最初の出現」ではなく
           // 「トークン数が最大の文」を採用(周辺情報量の安価なプロキシ)
           if (raws.length > prev.sentenceTokens) { prev.sentence = s; prev.sentenceTokens = raws.length }

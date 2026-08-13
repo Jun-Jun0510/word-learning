@@ -201,6 +201,11 @@ function WordbookView({ wb, onCycle }: { wb: WB.Wordbook; onCycle: (key: string,
         ))}
       </div>
       <p className="text-xs text-gray-400 mb-2">{rows.length}語 / 文書{Object.keys(wb.docs).length}件</p>
+      {levelF === 'L1b' && (
+        <p className="text-xs text-orange-500 mb-2">
+          注: L1b(論文英語層)は現状判定精度が低く、一般語や既知語が混入します(定義見直し待ち。architecture.md §7.3)
+        </p>
+      )}
       <ul>
         {rows.map(([k, st]) => (
           <li key={k} className="border-b border-gray-100 py-2">
