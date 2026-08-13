@@ -38,6 +38,10 @@ npm run preview  # ビルド確認
 - L3 表示上限 20 語(`L3_DISPLAY_CAP` 定数。ハードコード禁止要件に従いパラメータ化)
 - ⚑(topicRisk)はデフォルト非表示、チェックボックスで表示(phase2a_close_approval.md)
 
+## サイズ記録(2026-08-13 発注者判断)
+
+vocab_table.json = **生値 3.1MB / gzip 1.03MB**(語義7,437語焼き込み後)。上限5MB以内・目標1MB(生値)超過だが、gzip実測で実用上問題なしとして現状のまま進めることを承認済み。遅延ロード分割(日本語のみ別チャンク)は複雑さが増えるため不採用 — 実地検証で遅いと感じたら戻る。
+
 ## 既知のTODO(2b 内)
 
 1. **バンドル 1.9MB(gzip 669KB)**: wink-lemmatizer の辞書が主因。ビルド時にレンマ表(変化形→見出し語)を vocab_table.json に焼き込み、実行時 wink を除去する(architecture.md 当初案に戻す)
