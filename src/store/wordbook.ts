@@ -26,6 +26,7 @@ export interface Wordbook {
   schemaVersion: 2
   words: Record<string, WordState>
   docs: Record<string, { title: string; addedAt: string; l3Count: number; opened?: string[] }>
+  meta?: { lastExportAt?: string }
 }
 
 const KEY = 'word-learning:wordbook'
@@ -41,9 +42,32 @@ export function load(): Wordbook {
   } catch { return empty() }
 }
 
-export function save(wb: Wordbook): boolean {
-  try { localStorage.setItem(KEY, JSON.stringify(wb)); return true }
-  catch { return false }  // QuotaExceeded 等 → 呼び出し側でエクスポートを促す
+/** 保存容量の警告閾値(architecture §4.2: 4MB超で警告+エクスポート促し) */
+export const SIZE_WARN_BYTES = 4 * 1024 * 1024
+
+export interface SaveResult { ok: boolean; bytes: number }
+export function save(wb: Wordbook): SaveResult {
+  const s = JSON.stringify(wb)
+  const bytes = new TextEncoder().encode(s).length
+  try { localStorage.setItem(KEY, s); return { ok: true, bytes } }
+  catch { return { ok: false, bytes } }  // QuotaExceeded 等 → 呼び出し側でエクスポートを促す
+}
+
+/**
+ * エクスポートのリマインド判定(iOS Safari ITP 対策: 7日無操作でストレージが消えうる。
+ * 単語帳が消えると全部無価値になるため厚めに促す — phase0_answers.md §7 / 発注者指示)。
+ * 語が貯まっているのに「最終エクスポートから7日経過」または「一度も未エクスポート」なら true
+ */
+export function exportReminderDue(wb: Wordbook): boolean {
+  if (Object.keys(wb.words).length === 0) return false
+  const last = wb.meta?.lastExportAt
+  if (!last) return true
+  return Date.now() - new Date(last).getTime() > 7 * 24 * 3600 * 1000
+}
+
+export function markExported(wb: Wordbook): Wordbook {
+  wb.meta = { ...wb.meta, lastExportAt: new Date().toISOString() }
+  return wb
 }
 
 /** 正規化テキストの内容ハッシュ(cyrb53)。同一文書の再貼付を同一視する */

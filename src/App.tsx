@@ -235,7 +235,9 @@ export default function App() {
   const [tab, setTab] = useState<'prestudy' | 'wordbook' | 'check'>('prestudy')
   const [wb, setWb] = useState<WB.Wordbook>(() => WB.load())
   const [saveError, setSaveError] = useState(false)
+  const [sizeWarn, setSizeWarn] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
+  const reminderDue = WB.exportReminderDue(wb)
 
   useEffect(() => {
     fetch(`${import.meta.env.BASE_URL}data/vocab_table.json`)
@@ -244,7 +246,9 @@ export default function App() {
 
   const persist = (next: WB.Wordbook) => {
     setWb({ ...next })
-    if (!WB.save(next)) setSaveError(true)
+    const r = WB.save(next)
+    if (!r.ok) setSaveError(true)
+    setSizeWarn(r.bytes > WB.SIZE_WARN_BYTES)
   }
   const onCycle = (key: string, sid: string) => persist(WB.cycle(wb, key, sid))
   const onOpen = (key: string) => persist(WB.logOpen(wb, docId, key))
@@ -269,6 +273,7 @@ export default function App() {
     a.href = URL.createObjectURL(blob)
     a.download = `word-learning-backup-${new Date().toISOString().slice(0, 10)}.json`
     a.click()
+    persist(WB.markExported(wb))
   }
   const doImport = (file: File) => {
     file.text().then(t => {
@@ -283,6 +288,15 @@ export default function App() {
       <p className="text-sm text-gray-500 mb-3">読む前に貼る。危険語(L3)を10〜15分で予習する。 {table?.domain ?? '読み込み中…'}</p>
       {saveError && (
         <p className="text-sm text-red-600 mb-2">保存に失敗しました(容量超過の可能性)。エクスポートでバックアップしてください。</p>
+      )}
+      {sizeWarn && !saveError && (
+        <p className="text-sm text-orange-600 mb-2">単語帳が4MBを超えています。エクスポートでバックアップを取ってください。</p>
+      )}
+      {reminderDue && !saveError && !sizeWarn && (
+        <p className="text-sm text-orange-600 mb-2">
+          最終エクスポートから7日以上経過しています(未実施含む)。iPhoneのSafariは無操作7日でデータが消えることがあります —
+          <button className="underline ml-1" onClick={doExport}>今すぐエクスポート</button>
+        </p>
       )}
       <div className="flex gap-2 mb-3">
         <button className={`px-3 py-1 rounded ${tab === 'prestudy' ? 'bg-blue-600 text-white' : 'border'}`} onClick={() => setTab('prestudy')}>予習</button>

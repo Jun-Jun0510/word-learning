@@ -221,7 +221,12 @@ precision@50 で50枠中9枠が同一語幹の変化形(navigation/navigate/navi
 
 閾値調整では 1・2 の両方は直らないため**定義から見直す**(Phase 3)。それまで実害は「単語帳に貯まる語の質」のみ(予習モードに L1b は出ない)。単語帳UIの L1b 表示に精度注記を出して誤解を防ぐ(実装済み)。
 
-**関連(同日発見)**: 人名由来の専門語(Gaussian / Bayesian / Jacobian / Markovian / Lagrangian — ほぼ常に大文字)が**コーパス層の大文字率フィルタで固有名詞として除外**され、vocab_table に存在しない(Gaussian: C内2,203回・小文字率0.1%)。発注者要求は「L2として出したい」。対処候補: (a) -ian/-ean 語尾の人名形容詞をフィルタ除外条件から免除、(b) senses.yaml ピンで個別収載。判定層のため凍結 — Phase 3 の L4/固有名詞設計と併せて判断。
+**関連(同日発見)**: 人名由来の専門語(Gaussian / Bayesian / Jacobian / Markovian / Lagrangian — ほぼ常に大文字)が**コーパス層の大文字率フィルタで固有名詞として除外**され、vocab_table に存在しない(Gaussian: C内2,203回・小文字率0.1%)。発注者要求は「L2として出したい」。判定層のため凍結 — Phase 3 の L4/固有名詞設計と併せて対処。
+
+**対処方針(2026-08-13 発注者指示)**:
+- **対処案(a) -ian/-ean 語尾免除を第一候補**とする。ただし網羅性に限界がある: Hessian / Hamiltonian / Riemannian / Eulerian は拾えるが、**Fourier / Laplace / Kalman / Lyapunov / Nyquist は語尾変化しない**。これらは複合語で出ることが多い(Fourier transform, Kalman filter, Lyapunov function, Nyquist plot)ため、**複合語の扱いと併せて設計する**必要がある
+- 優先度: 制御理論由来の語(Jacobian, Lagrangian, Lyapunov, Nyquist)は読者既知のため低い。**優先すべきは cs.LG 側の統計語彙(Gaussian, Bayesian, Markovian, Bernoulli, Dirichlet, Wasserstein)**
+- **対処案(b) senses.yaml ピンの個別収載は、(a)で拾えない語の受け皿として併用する前提**で設計する(対象語が数十語程度なら現実的)
 
 ## 8. Phase 2 実装順(requirements §8 の 2a/2b/2c に対応)
 
