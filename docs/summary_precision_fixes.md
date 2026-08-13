@@ -81,6 +81,6 @@ B = 9.2Mトークン(+2.6M)。ゲートv2維持(19/20, sense_shift 10/10)。名�
 
 ## 残課題(忖度なし)
 
-1. **残存話題語16語(trajectory, motion, planning, robot 等)は一次分布統計の限界**。rgRel・delta・jsdBC のどの軸でも妥当語と重なる(実測)。「robot の文脈変化(話題)」と「return の文脈変化(語義)」は一次共起では同じに見える。**発注者が判断1で示した条件「C拡充後も混入するなら第3信号を検討」は成立した** — SGNS+OP 等への投資判断を仰ぐ
-2. topic-suspect 誤爆(support, head, augmentation, model, agent)が新たな主要な取りこぼし経路。第3信号はこちらも救える可能性が高い
+1. **(観測・2026-08-13 文言修正)** 残存話題語16語(trajectory, motion, planning, robot 等)は、**採点済み50語において rgRel・delta・jsdBC のどの軸でも妥当語と分離できなかった**。この50語は閾値スイープの対象となった検証セットであり、この重なりは汎化性能の話ではない。**汎化性能は新50語の採点で確認する**。第3信号への投資判断は新50語の採点後(方向性の指定は phase2a_review4.md — SGNS+OP を第一候補にせず PPMI+SVD 共通語彙空間案と比較。それまで調査・着手禁止)
+2. **(観測)** topic-suspect 誤爆(support, head, augmentation, model, agent)も採点済み50語・検証セット内の観測。ゲートv2の topic-flagged ルートで回復済み
 3. propose / proposed / existing は freq+sense 経由で残存(C abstracts の文体的頻度差。jsdBC も低くない)
