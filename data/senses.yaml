@@ -1,32 +1,45 @@
-# 語義キュレーション(発注者が自由に追記するファイル)
+# 語義キュレーション + L3ピン(発注者が自由に追記するファイル)
 #
-# 運用: 読んでいて「この語は分野内でも多義だ」と気づいたらここに追記する。
-# ビルド時に bake がこの内容を vocab_table.json の senses にマージする(Phase 2b で実装)。
-# ここに無い語は自動的に <word>#default の単一語義として扱われる。
+# 運用: 読んでいて「この語は分野内でも多義だ/拾われるべきなのに拾われていない」と
+# 気づいたらここに追記する。ビルド時に bake がマージし、登録語は分布判定と無関係に
+# L3 として vocab_table に収載される(キュレーション・ピン。Phase 2b で実装)。
+#
+# ルール(Phase 2a レビュー承認条件):
+#   - pinReason は必須。「なぜアルゴリズムが拾えないか」を書く。
+#     後で R/L 別統計等を導入した際、どのピンが不要になったか判定する材料になる。
+#   - ピン登録語は eval_report.md に「アルゴリズムが拾えなかった語」として恒久記録される。
+#     ピンは逃げ道ではなく、アルゴリズムの失敗の記録である。
+#   - ここに無い語は自動的に <word>#default の単一語義として扱われる。
 #
 # 形式:
 #   語:
-#     - id: 語#短いslug
-#       domainSense: 分野での意味(英語)
-#       contrast: 一般語義との対比の一行(L3の肝)
-#       ja: 日本語ラベル(トグル表示用)
+#     pinReason: ピン理由(必須)
+#     senses:
+#       - id: 語#短いslug
+#         domainSense: 分野での意味(英語)
+#         contrast: 一般語義との対比の一行(L3の肝)
+#         ja: 日本語ラベル(トグル表示用)
 
 mass:
-  - id: mass#ml
-    domainSense: "probability mass — the total probability assigned to a region or outcome"
-    contrast: "not physical mass — a share of probability, nothing to do with kilograms"
-    ja: "確率質量"
-  - id: mass#phys
-    domainSense: "physical mass in dynamics (inertia, kg)"
-    contrast: "(一般語義と同じ。cs.RO の動力学文脈)"
-    ja: "質量"
+  pinReason: "C構成がR重心のため物理質量が支配語義になり、確率質量の語義信号が消滅(2026-08-13 の before/after 検証。R/L別統計を入れたら再判定)"
+  senses:
+    - id: mass#ml
+      domainSense: "probability mass — the total probability assigned to a region or outcome"
+      contrast: "not physical mass — a share of probability, nothing to do with kilograms"
+      ja: "確率質量"
+    - id: mass#phys
+      domainSense: "physical mass in dynamics (inertia, kg)"
+      contrast: "(一般語義と同じ。cs.RO の動力学文脈)"
+      ja: "質量"
 
 prior:
-  - id: prior#bayes
-    domainSense: "prior distribution — belief before observing data"
-    contrast: "not 'previous' — a probability distribution (noun)"
-    ja: "事前分布"
-  - id: prior#adj
-    domainSense: "prior (adjective) — previous, earlier (prior work)"
-    contrast: "(一般語義と同じ。形容詞用法)"
-    ja: "以前の"
+  pinReason: "アルゴリズムでも検出済み(freq+sense)だが、品詞で語義が割れるため語義キュレーションが必要(検出失敗によるピンではない)"
+  senses:
+    - id: prior#bayes
+      domainSense: "prior distribution — belief before observing data"
+      contrast: "not 'previous' — a probability distribution (noun)"
+      ja: "事前分布"
+    - id: prior#adj
+      domainSense: "prior (adjective) — previous, earlier (prior work)"
+      contrast: "(一般語義と同じ。形容詞用法)"
+      ja: "以前の"

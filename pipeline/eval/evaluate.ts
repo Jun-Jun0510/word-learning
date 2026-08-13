@@ -8,6 +8,7 @@
  * を pipeline/out/eval_report.md に出力する。
  */
 import * as fs from 'node:fs'
+import * as yaml from 'js-yaml'
 import { loadGroundTruth, type GoldEntry } from './load_ground_truth.ts'
 
 const mid = JSON.parse(fs.readFileSync('pipeline/out/middata.json', 'utf8'))
@@ -125,6 +126,23 @@ ${negTopic.map(negLine).join('\n')}
 | 語 | 判定 | bucket | fieldKey | jsdAC | jsdAB | delta | rg | 結果 |
 |---|---|---|---|---|---|---|---|---|
 ${negGeneral.map(negLine).join('\n')}
+
+## キュレーション・ピン登録語(条件a: アルゴリズムが拾えなかった語の恒久記録)
+
+ピンは逃げ道ではなくアルゴリズムの失敗の記録である。**ピン件数の増加 = アルゴリズムの失敗の増加**として読む。
+
+| 語 | アルゴリズム判定 | ピンのみ?(=検出失敗) | pinReason |
+|---|---|---|---|
+${(() => {
+  try {
+    const senses = yaml.load(fs.readFileSync('data/senses.yaml', 'utf8')) as Record<string, any>
+    return Object.entries(senses).map(([w, def]) => {
+      const r = byWord.get(w)
+      const detected = r?.level === 'L3'
+      return `| ${w} | ${r ? `${r.level}/${r.bucket}` : '(統計なし)'} | ${detected ? '—(検出済み)' : '**✗ ピンのみ**'} | ${def.pinReason ?? '(未記入 — 必須違反)'} |`
+    }).join('\n')
+  } catch { return '| (data/senses.yaml なし) | | | |' }
+})()}
 
 ## 既知の不一致(発注者承認済み。正解セットは凍結のまま)
 
