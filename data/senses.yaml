@@ -141,3 +141,14 @@ anchor:
       contrast: "not a ship's anchor — the comparison baseline sample"
       jaGeneral: "錨"
       ja: "対照学習における基準サンプル(anchor-positive-negative の anchor)"
+
+# --- 2026-08-13 実地検証1本目(FM-VLA)で発見した生成誤りの修正(発注者ドラフト) ---
+
+conditioning:
+  pinReason: "生成誤りの上書き(生成は正規化/preconditioningの説明を書いた。実地検証1本目で発見)。L3本命級 — 日常の「条件づけ」からズレ、誤解すると論文主旨を取り違える"
+  senses:
+    - id: conditioning#ctx
+      domainSense: "providing X as input context that the model's output depends on"
+      contrast: "not normalization — feeding X in so the output depends on it"
+      jaGeneral: "調整、条件づけ"
+      ja: "何かを条件として与えること。conditioning on X = X を入力として与え、それに応じた出力を生成させる"
