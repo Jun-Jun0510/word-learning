@@ -1,7 +1,9 @@
 /**
  * 語義説明のビルド時プリベイク(案A。docs/phase2b_glosses_approval.md)。
  *
- * 実行: ANTHROPIC_API_KEY=sk-... npm run bake:glosses
+ * 実行: npm run bake:glosses
+ *   - APIキーはリポジトリ直下の .env(gitignore済み)に ANTHROPIC_API_KEY=sk-ant-... と書く。
+ *     環境変数でも可。会話ログ・コミットにキーを残さないための方式(発注者指示)
  *   - モデル: Haiku 4.5(MODEL 環境変数で上書き可。L3のみ Sonnet 再生成は
  *     MODEL=claude-sonnet-5 LEVELS=L3 で実行)
  *   - L3: 一般語義との対比が核(発注者3例文を few-shot)
@@ -22,8 +24,26 @@ const PRICE: Record<string, [number, number]> = {  // $/MTok [in, out]
   'claude-sonnet-5': [3, 15],
 }
 
+// .env 対応(依存を増やさず自前パース。環境変数が優先)
+function loadDotenv(): void {
+  if (process.env.ANTHROPIC_API_KEY) return
+  try {
+    for (const line of fs.readFileSync('.env', 'utf8').split('\n')) {
+      const m = line.match(/^\s*([A-Z_][A-Z0-9_]*)\s*=\s*(.+?)\s*$/)
+      if (m && !process.env[m[1]]) process.env[m[1]] = m[2].replace(/^["']|["']$/g, '')
+    }
+  } catch { /* .env なし */ }
+}
+loadDotenv()
+
 const KEY = process.env.ANTHROPIC_API_KEY
-if (!KEY) { console.error('ANTHROPIC_API_KEY が未設定です'); process.exit(1) }
+if (!KEY || !KEY.startsWith('sk-')) {
+  // ここで停止すればファイルには一切書き込まない(中途半端な生成物を残さない)
+  console.error('ERROR: ANTHROPIC_API_KEY が見つかりません。')
+  console.error('  リポジトリ直下に .env を作成し、次の1行を書いてください(gitignore済み):')
+  console.error('  ANTHROPIC_API_KEY=sk-ant-...')
+  process.exit(1)
+}
 
 const table = JSON.parse(fs.readFileSync('public/data/vocab_table.json', 'utf8'))
 const curated = new Set(Object.keys((yaml.load(fs.readFileSync('data/senses.yaml', 'utf8')) as any) ?? {}))
