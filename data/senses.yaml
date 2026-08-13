@@ -67,3 +67,77 @@ actor:
       contrast: "not a performer — the action-producing half of Actor-Critic"
       jaGeneral: "俳優"
       ja: "Actor-Critic の行動側。方策を出力するネットワーク"
+
+# --- 2026-08-13 抜き取り検査を受けた追加(発注者レビュー待ちドラフト) ---
+# 多義3語: 生成結果を cs.RO 側語義として保持し、cs.LG 側を追加(生成を捨てない)
+
+tight:
+  pinReason: "検出済み(語義キュレーション: cs.LG=bound / cs.RO=公差 で語義が割れる。抜き取り検査)"
+  senses:
+    - id: tight#bound
+      domainSense: "a bound close to the true value (tight bound)"
+      contrast: "not snug — the inequality is nearly an equality"
+      jaGeneral: "きつい"
+      ja: "上界が真値に近い(tight bound)。理論解析で「無駄のない」評価"
+    - id: tight#tol
+      domainSense: "small tolerance or narrow margin in mechanical/control specs"
+      contrast: "not snug — stringent numerical constraints"
+      jaGeneral: "きつい、ぴっちりした"
+      ja: "公差・許容誤差が小さい(tight tolerance / tight coupling。cs.RO側の用法)"
+
+flat:
+  pinReason: "検出済み(語義キュレーション: cs.LG=minima / cs.RO=地形 で語義が割れる。抜き取り検査)"
+  senses:
+    - id: flat#minima
+      domainSense: "flat minima — wide low-loss region linked to generalization"
+      contrast: "not level ground — a property of the loss landscape"
+      jaGeneral: "平らな"
+      ja: "flat minima。損失地形の平坦な谷。汎化性能と結びつく性質(cs.LG)"
+    - id: flat#terrain
+      domainSense: "terrain or surface without slope or curvature"
+      contrast: "(一般語義に近い)"
+      jaGeneral: "平らな、フラットな"
+      ja: "平坦な地面・環境(傾斜なし。cs.RO の移動タスク)"
+
+collapse:
+  pinReason: "検出済み(語義キュレーション: cs.LG=mode collapse / cs.RO=機能崩壊 で語義が割れる。抜き取り検査)"
+  senses:
+    - id: collapse#mode
+      domainSense: "mode/representation collapse — diversity or dimensions degenerate"
+      contrast: "not physical breakdown — outputs or features become uniform"
+      jaGeneral: "崩壊する"
+      ja: "mode collapse / representation collapse。多様性や次元が潰れる現象(cs.LG)"
+    - id: collapse#fail
+      domainSense: "failure or breakdown preventing system functionality"
+      contrast: "(一般語義に近い)"
+      jaGeneral: "崩壊、倒壊、破綻"
+      ja: "構造・機能の崩壊。制御の破綻など機能喪失に至る故障状態(cs.RO)"
+
+# 単一上書き3語(素直な取りこぼし)
+
+demonstration:
+  pinReason: "検出済み(語義キュレーション: 生成が模倣学習の語義を外したため上書き。抜き取り検査)"
+  senses:
+    - id: demonstration#il
+      domainSense: "expert trajectory data used for imitation learning"
+      contrast: "not a demo — the teaching data itself (learning from demonstrations)"
+      jaGeneral: "デモ、実演"
+      ja: "模倣学習の教師軌道データそのもの(learning from demonstrations)"
+
+hard:
+  pinReason: "検出済み(語義キュレーション: 生成がNP困難を選び hard negative を外したため上書き。抜き取り検査)"
+  senses:
+    - id: hard#negative
+      domainSense: "hard negative — a confusing negative example chosen on purpose"
+      contrast: "not difficult in general — a deliberately misleading training sample"
+      jaGeneral: "難しい、硬い"
+      ja: "hard negative(対照学習で意図的に選ぶ紛らわしい負例)"
+
+anchor:
+  pinReason: "検出済み(語義キュレーション: 生成がViT/GNN基準点を選び対照学習を外したため上書き。抜き取り検査)"
+  senses:
+    - id: anchor#contrastive
+      domainSense: "the reference sample in contrastive learning (anchor-positive-negative)"
+      contrast: "not a ship's anchor — the comparison baseline sample"
+      jaGeneral: "錨"
+      ja: "対照学習における基準サンプル(anchor-positive-negative の anchor)"
