@@ -47,11 +47,10 @@ export const CFG = {
                          // robotics 0.52)であり L2 へ降格。真のL3(見た目日常語)は B にも住むため
                          // delta は中程度に留まる(採点データでの妥当群上限 0.381 / ジャーゴン群下限
                          // 0.468 の間を取った初期値。分布99.75%点相当)
-  thetaRR: 0.5,          // θrr = rgRel の絶対閾値(B相対の隣人生存率。ジャンル差相殺。絶対版 rg は全語飽和で不採用)
-                         //       2026-08-13 スイープ(0.35/0.5/0.65): 採点済み50語への効果は 0.35 と 0.5 で同一、
-                         //       0.65 は正例(hard, demonstration)を壊す。同成績でL3総数が10%小さい 0.5 を採用。
-                         //       残存話題語の rgRel は 0.6〜1.0 で妥当語と重なり、θrr では分離不能(実測)。
-                         //       これ以上は第3信号(SGNS+OP等)の領域
+  thetaRR: 0.35,         // θrr = rgRel の絶対閾値(B相対の隣人生存率。ジャンル差相殺。絶対版 rg は全語飽和で不採用)
+                         //       ゲートv2(再現率優先)で 0.5→0.35 に戻した: hard 0.525 / primitive 0.498 /
+                         //       collapse 0.507 が 0.5 では閾値ぎりぎりで、取りこぼしは永久誤り(自己修復しない)。
+                         //       残存話題語の rgRel は 0.6〜1.0 で妥当語と重なり θrr では分離不能(スイープ実測)
   qK: 0.90,              // θk  = fieldKey (C-vs-B z) の分位点(高頻度プール)
   minFieldKeyZ: 10,      // θk の絶対下限(z)。分布が0近傍に集中し分位点が z≈2 まで下がる誤爆対策
   qK2: 0.90,             // θk2 = keynessC (C-vs-A z) の分位点(低頻度プール = L2)
@@ -386,12 +385,16 @@ async function main() {
       const bc = r?.jsdBC ?? null
       if (d !== null && d > CFG.deltaMaxJargon) { level = 'L2'; bucket = 'jargon' }  // ジャーゴンガード(診断3)
       else if (!discourse && d !== null && d >= θd && rgRelOk) { level = 'L3'; bucket = 'sense' }
-      // freq+sense に rgRel ガードを付けると robot は消えるが support 等の正例2語も失う
-      // (v5実測: 再現率17→15)。頻度急増型は rgRel なしを採用し、話題語混入は precision@50 の
-      // 手動採点と debug_topic の目視で監視する
       else if (!discourse && fk >= θk && d !== null && d >= θd2) { level = 'L3'; bucket = 'freq+sense' }
       else if (!discourse && academic && bc !== null && bc >= θbc && jAC !== null && jAC >= θs) { level = 'L3'; bucket = 'sense-academic' }
+      // ゲートv2(再現率優先): 学術頻出だがC文体語ではない(fk<θk)語で、語義証拠(jAC+rgRel)が
+      // ある語を拾う。value(価値関数)/collapse/greedy の回復経路。describe が混入するが許容(自己修復側)
+      else if (!discourse && academic && fk < θk && jAC !== null && jAC >= θs && rgRelOk) { level = 'L3'; bucket = 'sense-academic-rg' }
       else if (!discourse && !academic && d !== null && jAC !== null && jAC >= θs && rgRelOk) { level = 'L3'; bucket = 'sense-replace' }  // B にも同語義があり delta が相殺される STEM横断危険語(tight, hard)用
+      // ゲートv2(再現率優先): topic-suspect の足切りは「取りこぼし=永久誤り」を生むため、
+      // 語義証拠(jAC≥θs)がある語は ⚑ フラグ付きで L3 に通す(話題語混入は known 1タップで自己修復)。
+      // support / head / model / agent の回復経路。robot / method もここから ⚑ 付きで入る
+      else if (fk >= θk && jAC !== null && jAC >= θs) { level = 'L3'; bucket = 'topic-flagged' }
       else if (fk >= θk) { level = 'L1a'; bucket = 'topic-suspect' }   // 保留(破棄しない・復活は再ビルドで)
       else if (kBA >= θb && fk < θk) { level = 'L1b'; bucket = 'academic' }
       else { level = 'L1a'; bucket = 'plain' }
@@ -403,7 +406,8 @@ async function main() {
     const pK = pctRank(fieldKeyHigh, fk)
     // 話題語疑いフラグ(Phase 2a レビュー判断1): 語義証拠が弱いままL3入りした語を
     // UIで視覚的に区別できるようにする(後で消せるフラグとして保持)
-    const topicRisk = level === 'L3' && bucket === 'freq+sense' && !(r && r.rgRel !== null && r.rgRel >= thetaRR)
+    const topicRisk = level === 'L3' && (bucket === 'topic-flagged' ||
+      (bucket === 'freq+sense' && !(r && r.rgRel !== null && r.rgRel >= thetaRR)))
     rows.push({
       word: w, zipf: zp, cntA: A.uni.get(w) ?? 0, cntB: B.uni.get(w) ?? 0, cntC,
       keynessB: +kBA.toFixed(2), keynessC: +kCA.toFixed(2), fieldKey: +fk.toFixed(2),
@@ -447,7 +451,7 @@ async function main() {
   fs.writeFileSync('public/data/vocab_table.json',
     JSON.stringify({ version: 1, domain: 'cs.RO+cs.LG', builtAt: 'phase2a-poc', entries, lemma: {} }))
 
-  console.log(`levels: L3=${l3.length} (sense=${l3.filter(x => x.bucket === 'sense').length}, freq+sense=${l3.filter(x => x.bucket === 'freq+sense').length}, sense-replace=${l3.filter(x => x.bucket === 'sense-replace').length}, sense-academic=${l3.filter(x => x.bucket === 'sense-academic').length})  L2=${l2.length}  L1b=${l1b.length}  topic-suspect=${rows.filter(x => x.bucket === 'topic-suspect').length}  L1a-plain=${rows.filter(x => x.bucket === 'plain').length}`)
+  console.log(`levels: L3=${l3.length} (sense=${l3.filter(x => x.bucket === 'sense').length}, freq+sense=${l3.filter(x => x.bucket === 'freq+sense').length}, sense-replace=${l3.filter(x => x.bucket === 'sense-replace').length}, sense-academic=${l3.filter(x => x.bucket === 'sense-academic').length}, academic-rg=${l3.filter(x => x.bucket === 'sense-academic-rg').length}, topic-flagged⚑=${l3.filter(x => x.bucket === 'topic-flagged').length})  L2=${l2.length}  L1b=${l1b.length}  topic-suspect=${rows.filter(x => x.bucket === 'topic-suspect').length}  L1a-plain=${rows.filter(x => x.bucket === 'plain').length}`)
   console.log(`proper/acronym excluded from classification: ${properExcluded}`)
   console.log(`vocab_table.json: ${(fs.statSync('public/data/vocab_table.json').size / 1024).toFixed(0)} KB`)
   console.timeEnd('total')

@@ -62,10 +62,22 @@ const negGeneral = gt.negatives.filter(e => e.expected_signal === 'none').map(e 
 const recall = (g: Diag[]) => g.filter(d => d.hit).length
 const pct = (n: number, d: number) => `${((100 * n) / d).toFixed(0)}%`
 
-// precision@50 手動採点用(読者既知語は除外して数えない)
+// 採点済み語(2026-08-13 C2ビルドの precision@50)。過適合サイクル対策(ゲートv2):
+// この50語はもはや検証セットであり、新しい採点リストには含めない
+const GRADED = new Set([
+  'task', 'learning', 'grasping', 'environment', 'method', 'training', 'performance', 'tactile',
+  'object', 'control', 'policy', 'imitation', 'propose', 'trajectory', 'experiment', 'motion',
+  'robotics', 'robot', 'action', 'autonomous', 'humanoid', 'model', 'planning', 'baseline',
+  'unmanned', 'proposed', 'existing', 'indoor', 'accuracy', 'manipulation', 'language',
+  'reasoning', 'aerial', 'novel', 'safety', 'robotic', 'sensor', 'agent', 'visual', 'address',
+  'ros', 'scenario', 'evaluation', 'reinforcement', 'vehicle', 'planner', 'reward', 'pose',
+  'embodied', 'driving',
+])
+
+// precision@50 手動採点用(読者既知語・採点済み語は除外)
 const known = new Set(gt.readerKnown)
 const top50 = mid.rows
-  .filter((r: any) => r.level === 'L3' && !known.has(r.word))
+  .filter((r: any) => r.level === 'L3' && !known.has(r.word) && !GRADED.has(r.word))
   .sort((a: any, b: any) => b.score - a.score)
   .slice(0, 50)
 
@@ -98,14 +110,17 @@ const report = `# Phase 2a 評価レポート
 
 ## ゲート数値
 
-| 指標 | 値 | 目標 | 判定 |
+**ゲート基準 v2(2026-08-13 方針転換: 再現率優先)** — 根拠: 話題語の混入は known 1タップで自己修復するが、L3の取りこぼしは気づけず永久に残る(誤りの価値非対称性。phase2a_review2_recall_pivot.md)。
+
+| 指標 | 値 | 目標(v2) | 判定 |
 |---|---|---|---|
-| 再現率(全体) | ${recall(pos)}/20 (${pct(recall(pos), 20)}) | ≥70% | ${recall(pos) >= 14 ? '✅' : '❌'} |
-| **再現率(sense_shift群)** | ${recall(senseGroup)}/10 (${pct(recall(senseGroup), 10)}) | <30%ならJSD設計やり直し | ${recall(senseGroup) >= 3 ? '✅(下限クリア)' : '❌ JSD設計要見直し'} |
+| **再現率(全体)【必須】** | ${recall(pos)}/20 (${pct(recall(pos), 20)}) | **≥18/20** | ${recall(pos) >= 18 ? '✅' : '❌'} |
+| **再現率(sense_shift群)【必須】** | ${recall(senseGroup)}/10 (${pct(recall(senseGroup), 10)}) | **≥9/10** | ${recall(senseGroup) >= 9 ? '✅' : '❌'} |
 | 再現率(both群) | ${recall(bothGroup)}/10 (${pct(recall(bothGroup), 10)}) | (参考) | - |
-| 話題語型負例のL3混入 | ${negTopic.filter(x => x.r?.level === 'L3').length}/5 | 0 | ${negTopic.every(x => x.r?.level !== 'L3') ? '✅' : '❌ 話題語ガード失敗'} |
-| 一般語型負例のL3混入 | ${negGeneral.filter(x => x.r?.level === 'L3').length}/3 | 0 | ${negGeneral.every(x => x.r?.level !== 'L3') ? '✅' : '❌ 候補プール入口失敗'} |
-| precision@50 | 手動採点待ち(下表) | ≥60% | ⏳ |
+| 話題語型負例のL3混入 | ${negTopic.filter(x => x.r?.level === 'L3').length}/5(うち⚑ ${negTopic.filter(x => x.r?.level === 'L3' && (x.r?.topicRisk || x.r?.bucket === 'topic-flagged')).length}) | ⚑付きなら許容(自己修復) | 参考 |
+| 一般語型負例のL3混入 | ${negGeneral.filter(x => x.r?.level === 'L3').length}/3 | 参考 | 参考 |
+| precision@50 | 手動採点待ち(下表・既採点50語と重複なし) | **≥35%(目標)** | ⏳ |
+| 話題語の区別表示 | ⚑(topicRisk)を vocab_table に焼き込み済み | 必須 | ✅ |
 
 ## positives 診断 — sense_shift 群(JSD設計の唯一の指標)
 

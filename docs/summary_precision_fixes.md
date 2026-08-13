@@ -53,6 +53,15 @@
 
 検証セット回帰: 14/20(sense_shift 7/10)。取りこぼし: support / head / augmentation(topic-suspect誤爆)、collapse / greedy / value(信号閾値下)。
 
+## 追記(2026-08-13): ゲートv2(再現率優先)での回復
+
+発注者の方針転換(誤りの非対称性: 混入=自己修復/取りこぼし=永久。`phase2a_review2_recall_pivot.md`)を受け、
+- **sense-academic-rg ルート**(学術頻出だがC文体語でない語の語義救済)で value / collapse / greedy を回復
+- **topic-flagged ルート**(fk≥θk でも語義証拠 jAC≥θs があれば ⚑付きでL3)で support / head / model / agent を回復
+- θrr を 0.35 に戻し hard / primitive / collapse のマージンを確保
+
+結果: **再現率 19/20(必須≥18 ✅)、sense_shift 10/10(必須≥9 ✅)**。残る取りこぼしは augmentation(既知の不一致)のみ。副作用として describe が sense-academic-rg 経由で混入(rgRel 0.82 で分離不能。自己修復側として許容)。
+
 ## 残課題(忖度なし)
 
 1. **残存話題語16語(trajectory, motion, planning, robot 等)は一次分布統計の限界**。rgRel・delta・jsdBC のどの軸でも妥当語と重なる(実測)。「robot の文脈変化(話題)」と「return の文脈変化(語義)」は一次共起では同じに見える。**発注者が判断1で示した条件「C拡充後も混入するなら第3信号を検討」は成立した** — SGNS+OP 等への投資判断を仰ぐ
