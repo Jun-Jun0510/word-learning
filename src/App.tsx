@@ -1,16 +1,18 @@
 /**
- * Phase 2b: 予習モード / 単語帳モードの2モード(混ぜない。requirements §5.4)。
- * - 予習: 貼る → L3(グループ表示・上限20グループ+もっと見る)→ L2。known は表示から消える
- * - 状態は表層形×語義単位(1タップ)。表示はグループ(architecture §7.2)
- * - JSONエクスポート/インポート(マージ)。⚑はデフォルト非表示
+ * Phase 2b UI(phase2b_ui_review.md 修正1〜3・5反映)。
+ * - デフォルト表示: 語 / この分野での意味(英語・短く) / 出現文スニペット
+ * - タップで開く: 一般的な意味(日本語) / この分野での意味(日本語)。開閉はログに記録
+ *   (ステータスは自動変更しない)。訳を見る前に思い出す一拍を作る
+ * - 共起語・⚑はデバッグ設定でのみ表示
+ * - L3・L2 とも上限20グループ+もっと見る。解析ごとに展開状態をリセット
  */
 import { useEffect, useRef, useState } from 'react'
-import { analyze, type AnalysisResult } from './core/analyze'
+import { analyze, snippet, type AnalysisResult } from './core/analyze'
 import { groupByStem, type WordGroup } from './core/group'
 import * as WB from './store/wordbook'
 import type { VocabTable, DocWord } from './core/types'
 
-const L3_GROUP_CAP = 20  // 上限はグループ単位でカウント(発見3・承認済み)
+const GROUP_CAP = 20  // 上限はグループ単位でカウント(発見3・承認済み)
 
 const statusStyle: Record<WB.Status, string> = {
   new: 'bg-red-100 text-red-700',
@@ -18,91 +20,118 @@ const statusStyle: Record<WB.Status, string> = {
   known: 'bg-green-100 text-green-700',
 }
 
-function SenseRows({ k, w, wb, onCycle }: { k: string; w: DocWord['entry']; wb: WB.Wordbook; onCycle: (key: string, sid: string) => void }) {
-  const senses = w.senses?.length ? w.senses : null
-  const sids = WB.senseIdsOf(k, w)
+/** スニペット内の対象語を太字化 */
+function Sentence({ text, word }: { text: string; word: string }) {
+  const snip = snippet(text, word)
+  const re = new RegExp(`\\b(${word.slice(0, Math.max(4, word.length - 2))}[a-z'-]*)`, 'i')
+  const m = snip.match(re)
+  if (!m || m.index === undefined) return <span className="italic">“{snip}”</span>
   return (
-    <div className="space-y-1">
-      {sids.map((sid, i) => {
-        const st = wb.words[k]?.senses[sid]?.status ?? 'new'
-        const sense = senses?.[i]
-        return (
-          <div key={sid} className="flex items-center gap-2 text-sm">
-            <button
-              className={`px-2 py-0.5 rounded text-xs ${statusStyle[st]}`}
-              onClick={e => { e.stopPropagation(); onCycle(k, sid) }}
-            >{st}</button>
-            {sense ? (
-              <span><span className="font-medium">{sense.ja}</span> — {sense.domainSense}
-                <span className="text-gray-400"> / {sense.contrast}</span></span>
-            ) : (
-              <span className="text-gray-400">(語義未キュレーション)</span>
-            )}
-          </div>
-        )
-      })}
+    <span className="italic">
+      “{snip.slice(0, m.index)}<strong className="not-italic font-bold">{m[1]}</strong>{snip.slice(m.index + m[1].length)}”
+    </span>
+  )
+}
+
+function SurfaceBlock({ w, wb, debug, onCycle, onOpen }: {
+  w: DocWord; wb: WB.Wordbook; debug: boolean
+  onCycle: (key: string, sid: string) => void; onOpen: (key: string) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const e = w.entry
+  const senses = e.senses?.length ? e.senses : [{ id: `${w.entryKey}#default`, domainSense: '' }]
+  const toggle = () => { if (!open) onOpen(w.entryKey); setOpen(!open) }
+  return (
+    <div>
+      <button className="w-full text-left" onClick={toggle}>
+        <div className="flex items-baseline gap-2 flex-wrap">
+          <span className="font-semibold text-lg">{w.entryKey}</span>
+          {debug && e.pinned && <span className="text-xs text-purple-500">pin</span>}
+          {debug && e.topicRisk && <span title="自動判定の確信度低">⚑</span>}
+          <span className="text-xs text-gray-400 ml-auto">×{w.count}</span>
+          {senses.map(s => {
+            const st = wb.words[w.entryKey]?.senses[s.id]?.status ?? 'new'
+            return (
+              <span key={s.id} role="button" tabIndex={0}
+                className={`px-2 py-0.5 rounded text-xs cursor-pointer ${statusStyle[st]}`}
+                onClick={ev => { ev.stopPropagation(); onCycle(w.entryKey, s.id) }}
+              >{st}</span>
+            )
+          })}
+        </div>
+        {/* デフォルト表示: この分野での意味(英語・短く) */}
+        {senses[0].domainSense
+          ? <p className="text-sm text-gray-800">{senses.map(s => s.domainSense).filter(Boolean).join(' / ')}</p>
+          : <p className="text-sm text-gray-300">(語義説明は未生成)</p>}
+        {/* デフォルト表示: 出現文スニペット */}
+        <p className="text-sm text-gray-500"><Sentence text={w.sentence} word={w.entryKey} /></p>
+      </button>
+      {open && (
+        <div className="mt-1 pl-2 border-l-2 border-blue-200 text-sm space-y-1">
+          {senses.map(s => (
+            <div key={s.id}>
+              {(s.jaGeneral || s.ja)
+                ? <p><span className="text-gray-400">一般:</span> {s.jaGeneral ?? '—'} <span className="text-gray-400 ml-2">分野:</span> {s.ja ?? '—'}</p>
+                : <p className="text-gray-300">(日本語訳は未生成)</p>}
+            </div>
+          ))}
+          {debug && e.collGeneral && (
+            <p className="text-xs text-gray-400">一般の隣人: {e.collGeneral.slice(0, 5).join(', ')} / この分野の隣人: {(e.collField ?? []).slice(0, 5).join(', ')}</p>
+          )}
+        </div>
+      )}
     </div>
   )
 }
 
-function GroupRow({ g, wb, showFlag, onCycle }: { g: WordGroup; wb: WB.Wordbook; showFlag: boolean; onCycle: (key: string, sid: string) => void }) {
-  const [open, setOpen] = useState(false)
-  const e = g.rep.entry
+function GroupRow(props: { g: WordGroup; wb: WB.Wordbook; debug: boolean; onCycle: (k: string, s: string) => void; onOpen: (k: string) => void }) {
+  const { g, ...rest } = props
   return (
     <li className="border-b border-gray-200 py-2">
-      <button className="w-full text-left" onClick={() => setOpen(!open)}>
-        <div className="flex items-baseline gap-2 flex-wrap">
-          <span className="font-semibold text-lg">{g.rep.entryKey}</span>
-          {e.pinned && <span title="キュレーション・ピン" className="text-xs text-purple-500">pin</span>}
-          {showFlag && e.topicRisk && <span title="自動判定の確信度低">⚑</span>}
-          {g.variants.length > 0 && (
-            <span className="text-xs text-gray-400">+{g.variants.map(v => v.entryKey).join(', ')}</span>
-          )}
-          <span className="text-xs text-gray-400 ml-auto">×{g.rep.count + g.variants.reduce((a, v) => a + v.count, 0)}</span>
+      <SurfaceBlock w={g.rep} {...rest} />
+      {g.variants.map(v => (
+        <div key={v.entryKey} className="mt-1 pl-3 border-l-2 border-gray-100">
+          <SurfaceBlock w={v} {...rest} />
         </div>
-      </button>
-      <div className="mt-1">
-        <SenseRows k={g.rep.entryKey} w={e} wb={wb} onCycle={onCycle} />
-        {g.variants.map(v => (
-          <div key={v.entryKey} className="mt-1 pl-3 border-l-2 border-gray-100">
-            <span className="text-sm font-medium">{v.entryKey}</span>
-            <SenseRows k={v.entryKey} w={v.entry} wb={wb} onCycle={onCycle} />
-          </div>
-        ))}
-      </div>
-      {open && (
-        <div className="mt-1 text-sm text-gray-700 space-y-1">
-          {e.collGeneral && <p><span className="text-gray-400">一般の隣人:</span> {e.collGeneral.slice(0, 5).join(', ')}</p>}
-          {e.collField && <p><span className="text-gray-400">この分野の隣人:</span> {e.collField.slice(0, 5).join(', ')}</p>}
-          <p className="text-gray-500 italic">“{g.rep.sentence}”</p>
-        </div>
-      )}
+      ))}
     </li>
   )
 }
 
-function Prestudy({ result, wb, showFlag, onCycle }: { result: AnalysisResult; wb: WB.Wordbook; showFlag: boolean; onCycle: (key: string, sid: string) => void }) {
+function CappedList({ title, groups, wb, debug, onCycle, onOpen }: {
+  title: string; groups: WordGroup[]; wb: WB.Wordbook; debug: boolean
+  onCycle: (k: string, s: string) => void; onOpen: (k: string) => void
+}) {
   const [expanded, setExpanded] = useState(false)
-  // known(全語義)を予習から除外(単語帳には残る。df は沈めるだけ / known は消す — 役割分離)
+  const shown = expanded ? groups : groups.slice(0, GROUP_CAP)
+  return (
+    <section className="mt-5">
+      <h2 className="text-xl font-bold">
+        {title} <span className="text-sm font-normal text-gray-400">
+          {groups.length}グループ{groups.length > GROUP_CAP && !expanded ? `(上位${GROUP_CAP}を表示中)` : ''}
+        </span>
+      </h2>
+      <ul>{shown.map(g => <GroupRow key={g.rep.entryKey} g={g} wb={wb} debug={debug} onCycle={onCycle} onOpen={onOpen} />)}</ul>
+      {groups.length > GROUP_CAP && !expanded && (
+        <button className="mt-2 text-sm text-blue-600" onClick={() => setExpanded(true)}>
+          もっと見る(残り {groups.length - GROUP_CAP} グループ)
+        </button>
+      )}
+    </section>
+  )
+}
+
+function Prestudy({ result, wb, debug, onCycle, onOpen }: {
+  result: AnalysisResult; wb: WB.Wordbook; debug: boolean
+  onCycle: (k: string, s: string) => void; onOpen: (k: string) => void
+}) {
   const visible = (w: DocWord) => WB.aggregateStatus(wb.words[w.entryKey]) !== 'known'
   const l3groups = groupByStem(result.l3.filter(visible))
   const l2groups = groupByStem(result.l2.filter(visible))
-  const shown = expanded ? l3groups : l3groups.slice(0, L3_GROUP_CAP)
   return (
     <>
-      <section className="mt-4">
-        <h2 className="text-xl font-bold">L3 危険語 <span className="text-sm font-normal text-gray-400">{l3groups.length}グループ</span></h2>
-        <ul>{shown.map(g => <GroupRow key={g.rep.entryKey} g={g} wb={wb} showFlag={showFlag} onCycle={onCycle} />)}</ul>
-        {l3groups.length > L3_GROUP_CAP && !expanded && (
-          <button className="mt-2 text-sm text-blue-600" onClick={() => setExpanded(true)}>
-            もっと見る(残り {l3groups.length - L3_GROUP_CAP} グループ)
-          </button>
-        )}
-      </section>
-      <section className="mt-6">
-        <h2 className="text-xl font-bold">L2 専門語 <span className="text-sm font-normal text-gray-400">{l2groups.length}グループ</span></h2>
-        <ul>{l2groups.map(g => <GroupRow key={g.rep.entryKey} g={g} wb={wb} showFlag={showFlag} onCycle={onCycle} />)}</ul>
-      </section>
+      <CappedList title="L3 危険語" groups={l3groups} wb={wb} debug={debug} onCycle={onCycle} onOpen={onOpen} />
+      <CappedList title="L2 専門語" groups={l2groups} wb={wb} debug={debug} onCycle={onCycle} onOpen={onOpen} />
     </>
   )
 }
@@ -149,7 +178,8 @@ export default function App() {
   const [table, setTable] = useState<VocabTable | null>(null)
   const [text, setText] = useState('')
   const [result, setResult] = useState<AnalysisResult | null>(null)
-  const [showFlag, setShowFlag] = useState(false)
+  const [docId, setDocId] = useState('')
+  const [debug, setDebug] = useState(false)
   const [tab, setTab] = useState<'prestudy' | 'wordbook'>('prestudy')
   const [wb, setWb] = useState<WB.Wordbook>(() => WB.load())
   const [saveError, setSaveError] = useState(false)
@@ -165,14 +195,16 @@ export default function App() {
     if (!WB.save(next)) setSaveError(true)
   }
   const onCycle = (key: string, sid: string) => persist(WB.cycle(wb, key, sid))
+  const onOpen = (key: string) => persist(WB.logOpen(wb, docId, key))
 
   const run = () => {
     if (!table) return
     const r = analyze(text, table)
+    const id = WB.docIdOf(text)
     setResult(r)
-    const docId = WB.docIdOf(text)
+    setDocId(id)
     const title = text.trim().split('\n')[0].slice(0, 50)
-    persist(WB.record(wb, docId, title, [...r.l3, ...r.l2].map(w => ({
+    persist(WB.record(wb, id, title, [...r.l3, ...r.l2].map(w => ({
       entryKey: w.entryKey, entry: w.entry, count: w.count, sentence: w.sentence,
     }))))
   }
@@ -186,7 +218,7 @@ export default function App() {
   }
   const doImport = (file: File) => {
     file.text().then(t => {
-      try { persist(WB.importMerge(wb, JSON.parse(t))) ; alert('マージしました') }
+      try { persist(WB.importMerge(wb, JSON.parse(t))); alert('マージしました') }
       catch (e) { alert('インポート失敗: ' + e) }
     })
   }
@@ -217,16 +249,19 @@ export default function App() {
             <button className="bg-blue-600 text-white rounded px-4 py-2 disabled:opacity-40"
               disabled={!table || !text.trim()} onClick={run}>解析する</button>
             <label className="text-xs text-gray-400 flex items-center gap-1">
-              <input type="checkbox" checked={showFlag} onChange={e => setShowFlag(e.target.checked)} />
-              ⚑を表示(実験的)
+              <input type="checkbox" checked={debug} onChange={e => setDebug(e.target.checked)} />
+              デバッグ表示(共起語・⚑)
             </label>
           </div>
           {result && (
             <>
               <p className="text-xs text-gray-400 mt-3">
-                {result.totalTokens.toLocaleString()} tokens / 未照合率 {(result.unmatchedRatio * 100).toFixed(1)}%
+                {result.totalTokens.toLocaleString()} tokens / 非収載率 {(result.unmatchedRatio * 100).toFixed(1)}%(機能語・一般語含む)
               </p>
-              <Prestudy result={result} wb={wb} showFlag={showFlag} onCycle={onCycle} />
+              {/* key=docId で解析ごとに展開状態をリセット(修正5) */}
+              <div key={docId}>
+                <Prestudy result={result} wb={wb} debug={debug} onCycle={onCycle} onOpen={onOpen} />
+              </div>
             </>
           )}
         </>

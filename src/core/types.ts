@@ -12,7 +12,13 @@ export interface VocabEntry {
   pinned?: boolean
   collGeneral?: string[]
   collField?: string[]
-  senses?: Array<{ id: string; domainSense: string; contrast: string; ja: string }>
+  senses?: Array<{
+    id: string
+    domainSense: string   // この分野での意味(英語・短く)。デフォルト表示(UI修正1)
+    contrast?: string     // 一般語義との対比の一行(英語)
+    ja?: string           // 分野での意味(日本語)。タップで開く
+    jaGeneral?: string    // 一般的な意味(日本語)。タップで開く
+  }>
 }
 
 export interface VocabTable {
@@ -28,5 +34,6 @@ export interface DocWord {
   entryKey: string         // vocab_table のキー
   entry: VocabEntry
   count: number            // 文書内出現回数(ソート補助・表示用のみ。足切りに使わない)
-  sentence: string         // 文書内の実際の出現文(最初の1つ)
+  sentence: string         // 文書内の出現文(トークン数最大の文を採用。algorithm.md §3.4)
+  sentenceTokens: number   // 選定用の内部値
 }

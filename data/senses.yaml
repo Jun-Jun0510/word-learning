@@ -2,44 +2,68 @@
 #
 # 運用: 読んでいて「この語は分野内でも多義だ/拾われるべきなのに拾われていない」と
 # 気づいたらここに追記する。ビルド時に bake がマージし、登録語は分布判定と無関係に
-# L3 として vocab_table に収載される(キュレーション・ピン。Phase 2b で実装)。
+# L3 として vocab_table に収載される(キュレーション・ピン)。
 #
 # ルール(Phase 2a レビュー承認条件):
-#   - pinReason は必須。「なぜアルゴリズムが拾えないか」を書く。
-#     後で R/L 別統計等を導入した際、どのピンが不要になったか判定する材料になる。
-#   - ピン登録語は eval_report.md に「アルゴリズムが拾えなかった語」として恒久記録される。
-#     ピンは逃げ道ではなく、アルゴリズムの失敗の記録である。
+#   - pinReason は必須。「なぜ登録するか」を書く(検出失敗によるピンか、語義データ目的かを区別)。
+#   - ピンのみ(=アルゴリズム検出失敗)の語は eval_report.md に恒久記録される。
 #   - ここに無い語は自動的に <word>#default の単一語義として扱われる。
 #
-# 形式:
-#   語:
-#     pinReason: ピン理由(必須)
-#     senses:
-#       - id: 語#短いslug
-#         domainSense: 分野での意味(英語)
-#         contrast: 一般語義との対比の一行(L3の肝)
-#         ja: 日本語ラベル(トグル表示用)
+# 表示仕様(phase2b_ui_review.md 修正1):
+#   domainSense(英語・短く)= デフォルト表示。読解のヒントとして機能する長さに
+#   jaGeneral(一般・日本語)/ ja(分野・日本語)= タップで開く。一行で刺さる対比を優先
 
 mass:
-  pinReason: "C構成がR重心のため物理質量が支配語義になり、確率質量の語義信号が消滅(2026-08-13 の before/after 検証。R/L別統計を入れたら再判定)"
+  pinReason: "C構成がR重心のため確率質量の信号が不安定(現ビルドでは検出済み。語義データ目的も兼ねる)"
   senses:
     - id: mass#ml
-      domainSense: "probability mass — the total probability assigned to a region or outcome"
-      contrast: "not physical mass — a share of probability, nothing to do with kilograms"
-      ja: "確率質量"
+      domainSense: "probability mass — total probability assigned to a region"
+      contrast: "not physical mass — a share of probability"
+      jaGeneral: "質量、大量の"
+      ja: "確率質量(ある領域に割り当てられた確率の総量)"
     - id: mass#phys
-      domainSense: "physical mass in dynamics (inertia, kg)"
-      contrast: "(一般語義と同じ。cs.RO の動力学文脈)"
-      ja: "質量"
+      domainSense: "physical mass (dynamics, inertia)"
+      contrast: "(一般語義と同じ)"
+      jaGeneral: "質量"
+      ja: "質量(cs.RO の動力学文脈。一般語義と同じ)"
 
 prior:
-  pinReason: "アルゴリズムでも検出済み(freq+sense)だが、品詞で語義が割れるため語義キュレーションが必要(検出失敗によるピンではない)"
+  pinReason: "検出済み(語義データ目的)。品詞で語義が割れる代表例"
   senses:
     - id: prior#bayes
       domainSense: "prior distribution — belief before observing data"
       contrast: "not 'previous' — a probability distribution (noun)"
-      ja: "事前分布"
+      jaGeneral: "前の、以前の"
+      ja: "事前分布(データを見る前の信念を表す確率分布)"
     - id: prior#adj
-      domainSense: "prior (adjective) — previous, earlier (prior work)"
+      domainSense: "previous, earlier (prior work)"
       contrast: "(一般語義と同じ。形容詞用法)"
-      ja: "以前の"
+      jaGeneral: "前の、以前の"
+      ja: "以前の(prior work = 先行研究。一般語義と同じ)"
+
+curriculum:
+  pinReason: "検出済み(語義データ目的)。発注者UI確認で本命指定 — 日常の意味で読むと確実に誤読する"
+  senses:
+    - id: curriculum#rl
+      domainSense: "curriculum learning — gradually increasing task difficulty"
+      contrast: "not a school curriculum — a training schedule from easy to hard"
+      jaGeneral: "教育課程"
+      ja: "簡単な課題から段階的に難しくする学習方式(カリキュラム学習)"
+
+disturbance:
+  pinReason: "検出済み(語義データ目的)。制御読者には既知だが対比例として発注者指定"
+  senses:
+    - id: disturbance#ctrl
+      domainSense: "external disturbance — unexpected input acting on the system"
+      contrast: "not annoyance — an external input to be rejected"
+      jaGeneral: "邪魔、妨害"
+      ja: "外乱(制御対象に加わる予期しない入力)"
+
+actor:
+  pinReason: "検出済み(語義データ目的)。一般語義「俳優」との対比が典型"
+  senses:
+    - id: actor#rl
+      domainSense: "the policy network in Actor-Critic methods"
+      contrast: "not a performer — the action-producing half of Actor-Critic"
+      jaGeneral: "俳優"
+      ja: "Actor-Critic の行動側。方策を出力するネットワーク"

@@ -3,8 +3,36 @@
  * 前処理・トークナイズは pipeline/compute/text.ts と同一実装を共有する(architecture.md §3.1)。
  * レンマ化も pipeline と同じ wink-lemmatizer の名詞レンマ(複数形統合)。
  */
-import { stripLatex, sentences, tokenizeRaw } from '../../pipeline/compute/text'
+import { stripLatex, tokenizeRaw } from '../../pipeline/compute/text'
 import type { VocabTable, DocWord } from './types'
+
+/**
+ * 表示用の文分割(phase2b_ui_review.md 修正2b)。
+ * pipeline の sentences()(判定層。凍結中)には触れず、表示専用に精度を上げる:
+ * 小数点(3.5 m/s)・略語(et al., Fig., e.g., i.e.)・単一大文字(A. Smith)で切らない。
+ */
+export function displaySentences(text: string): string[] {
+  const marked = text
+    .replace(/\b(e\.g|i\.e|et al|Fig|fig|cf|vs|etc|Eq|eq|Sec|sec|approx|resp|Dr|Prof)\./g, '$1<DOT>')
+    .replace(/(\d)\.(\d)/g, '$1<DEC>$2')
+    .replace(/\b([A-Z])\./g, '$1<DOT>')
+  return marked
+    .split(/(?<=[.!?;])\s+|\n+/)
+    .map(s => s.replace(/<DOT>/g, '.').replace(/<DEC>/g, '.').trim())
+    .filter(Boolean)
+}
+
+/**
+ * 出現文のスニペット化(修正2d): 対象語の前後 window 語を残して中略する。
+ * 対象語は **word** でマーク(UI側で強調表示)。
+ */
+export function snippet(sentence: string, word: string, window = 9): string {
+  const tokens = sentence.split(/\s+/)
+  const idx = tokens.findIndex(t => t.toLowerCase().replace(/[^a-z'-]/g, '').startsWith(word.slice(0, Math.max(4, word.length - 2))))
+  if (idx < 0 || tokens.length <= window * 2 + 1) return sentence
+  const lo = Math.max(0, idx - window), hi = Math.min(tokens.length, idx + window + 1)
+  return (lo > 0 ? '… ' : '') + tokens.slice(lo, hi).join(' ') + (hi < tokens.length ? ' …' : '')
+}
 
 /**
  * 表層形 → vocab_table キーの解決。
@@ -30,7 +58,7 @@ export function analyze(text: string, table: VocabTable): AnalysisResult {
   const found = new Map<string, DocWord>()
   let totalTokens = 0
   let matched = 0
-  for (const s of sentences(stripLatex(text))) {
+  for (const s of displaySentences(stripLatex(text))) {
     const raws = tokenizeRaw(s)
     for (const raw of raws) {
       totalTokens++
@@ -46,11 +74,15 @@ export function analyze(text: string, table: VocabTable): AnalysisResult {
       matched++
       for (const key of keys) {
         const prev = found.get(key)
-        if (prev) { prev.count++ }
-        else {
+        if (prev) {
+          prev.count++
+          // 出現文の選定基準(修正2c、algorithm.md §3.4): 「最初の出現」ではなく
+          // 「トークン数が最大の文」を採用(周辺情報量の安価なプロキシ)
+          if (raws.length > prev.sentenceTokens) { prev.sentence = s; prev.sentenceTokens = raws.length }
+        } else {
           found.set(key, {
             surface, entryKey: key, entry: table.entries[key],
-            count: 1, sentence: s.trim().slice(0, 300),
+            count: 1, sentence: s, sentenceTokens: raws.length,
           })
         }
       }

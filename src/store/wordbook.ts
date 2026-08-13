@@ -20,7 +20,7 @@ export interface WordState {
 export interface Wordbook {
   schemaVersion: 2
   words: Record<string, WordState>
-  docs: Record<string, { title: string; addedAt: string; l3Count: number }>
+  docs: Record<string, { title: string; addedAt: string; l3Count: number; opened?: string[] }>
 }
 
 const KEY = 'word-learning:wordbook'
@@ -80,6 +80,20 @@ export function record(wb: Wordbook, docId: string, title: string,
       if (st.sources.length > 10) st.sources = st.sources.slice(-10)  // 上限設計(architecture §4.2)
     }
     st.updatedAt = d
+  }
+  return wb
+}
+
+/**
+ * 開閉ログ(phase2b_ui_review.md 修正3): どの語の日本語訳を開いたかを文書単位で記録。
+ * ステータスは自動変更しない(開かなかった=既知とは限らない)。
+ * 読了後チェック画面が「開いた語」を優先的に確認対象へ出すための参考値。
+ */
+export function logOpen(wb: Wordbook, docId: string, key: string): Wordbook {
+  const doc = wb.docs[docId]
+  if (doc) {
+    doc.opened ??= []
+    if (!doc.opened.includes(key)) doc.opened.push(key)
   }
   return wb
 }
