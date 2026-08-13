@@ -26,7 +26,7 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import * as readline from 'node:readline'
 import lemmatizer from 'wink-lemmatizer'
-import { stripLatex, sentences, tokenize, STOPWORDS, DISCOURSE } from './text.ts'
+import { stripLatex, sentences, tokenizeRaw, STOPWORDS, DISCOURSE } from './text.ts'
 
 // ---- 設定(初期値。PoC の分布を見て調整する) ----
 export const CFG = {
@@ -41,9 +41,17 @@ export const CFG = {
   qD: 0.85,              // θd  = delta の分位点(語義置換型 L3・レジスタ相殺ルート)
   qD2: 0.70,             // θd2 = 頻度急増型に課す緩い delta 条件の分位点
   qS: 0.50,              // θs  = jsdAC の分位点(sense-replace ルートの入口。精度は rgRel が担う)
-  thetaRR: 0.35,         // θrr = rgRel の絶対閾値(B相対の隣人生存率。ジャンル差相殺。絶対版 rg は全語飽和で不採用)
-                         //       0.35 は return(0.378)/robot(0.289) の間。マージンが薄く20語での確定は危険。
-                         //       増強パスでは閾値調整でなく判別力(第3信号)の追加で解くこと
+  qBC: 0.85,             // θbc = jsdBC の分位点(学術頻出語のうち B-C で語義が割れる語だけ L3 に通す)
+  deltaMaxJargon: 0.42,  // θdj = delta の上限(ジャーゴンガード)。delta が極端に高い語は
+                         // 「Bにほぼ生息しない=一般英語の顔をしていない」専門語(grasping 0.55,
+                         // robotics 0.52)であり L2 へ降格。真のL3(見た目日常語)は B にも住むため
+                         // delta は中程度に留まる(採点データでの妥当群上限 0.381 / ジャーゴン群下限
+                         // 0.468 の間を取った初期値。分布99.75%点相当)
+  thetaRR: 0.5,          // θrr = rgRel の絶対閾値(B相対の隣人生存率。ジャンル差相殺。絶対版 rg は全語飽和で不採用)
+                         //       2026-08-13 スイープ(0.35/0.5/0.65): 採点済み50語への効果は 0.35 と 0.5 で同一、
+                         //       0.65 は正例(hard, demonstration)を壊す。同成績でL3総数が10%小さい 0.5 を採用。
+                         //       残存話題語の rgRel は 0.6〜1.0 で妥当語と重なり、θrr では分離不能(実測)。
+                         //       これ以上は第3信号(SGNS+OP等)の領域
   qK: 0.90,              // θk  = fieldKey (C-vs-B z) の分位点(高頻度プール)
   minFieldKeyZ: 10,      // θk の絶対下限(z)。分布が0近傍に集中し分位点が z≈2 まで下がる誤爆対策
   qK2: 0.90,             // θk2 = keynessC (C-vs-A z) の分位点(低頻度プール = L2)
@@ -62,13 +70,31 @@ function lemma(tok: string): string {
   return l
 }
 
-type Counts = { uni: Map<string, number>; total: number }
-function newCounts(): Counts { return { uni: new Map(), total: 0 } }
-function addTokens(c: Counts, toks: string[]) {
-  for (const t of toks) {
-    const l = lemma(t)
+type Counts = { uni: Map<string, number>; total: number; caseLower: Map<string, number> }
+function newCounts(): Counts { return { uni: new Map(), total: 0, caseLower: new Map() } }
+
+// 大文字統計(全コーパス合算): 小文字で出現した割合が低い語 = 略語・固有名詞
+const caseTotal = new Map<string, number>()
+const caseLower = new Map<string, number>()
+/** 略語・固有名詞判定: 小文字出現率 < 30%(IL, DIME, Hutchinson, Fu 等)。
+ *  文頭大文字だけの一般語は他所で小文字出現するため誤爆しない */
+function isProperLike(w: string): boolean {
+  const t = caseTotal.get(w) ?? 0
+  if (t < 3) return false
+  return (caseLower.get(w) ?? 0) / t < 0.3
+}
+
+function addTokens(c: Counts, raws: string[]) {
+  for (const raw of raws) {
+    const lower = raw.toLowerCase()
+    const l = lemma(lower)
     c.uni.set(l, (c.uni.get(l) ?? 0) + 1)
     c.total++
+    caseTotal.set(l, (caseTotal.get(l) ?? 0) + 1)
+    if (raw === lower) {
+      caseLower.set(l, (caseLower.get(l) ?? 0) + 1)
+      c.caseLower.set(l, (c.caseLower.get(l) ?? 0) + 1)
+    }
   }
 }
 
@@ -88,7 +114,7 @@ async function forEachSentenceJsonl(prefix: string, fn: (toks: string[]) => void
       let abs = ''
       try { abs = JSON.parse(line).abstract ?? '' } catch { continue }
       for (const s of sentences(stripLatex(abs))) {
-        const toks = tokenize(s)
+        const toks = tokenizeRaw(s)
         if (toks.length) fn(toks)
       }
     }
@@ -98,7 +124,7 @@ async function forEachSentenceJsonl(prefix: string, fn: (toks: string[]) => void
 async function forEachSentenceText(file: string, fn: (toks: string[]) => void) {
   for await (const line of linesOf(file)) {
     for (const s of sentences(line)) {
-      const toks = tokenize(s)
+      const toks = tokenizeRaw(s)
       if (toks.length) fn(toks)
     }
   }
@@ -125,8 +151,8 @@ function collectCooc(candidates: Set<string>, ctxIndex: Map<string, number>) {
   const perWord = new Map<string, number>()
   return {
     cooc, perWord,
-    onSentence(toks: string[]) {
-      const lems = toks.map(lemma)
+    onSentence(raws: string[]) {
+      const lems = raws.map(t => lemma(t.toLowerCase()))
       for (let i = 0; i < lems.length; i++) {
         const w = lems[i]
         if (!candidates.has(w)) continue
@@ -175,8 +201,12 @@ function quantile(sorted: number[], q: number): number {
   return sorted[idx]
 }
 
+// θrr の再探索用オーバーライド(診断1): THETA_RR=0.5 npm run build:stats
+const thetaRR = Number(process.env.THETA_RR ?? CFG.thetaRR)
+
 async function main() {
   console.time('total')
+  console.log(`thetaRR = ${thetaRR}${process.env.THETA_RR ? ' (env override)' : ''}`)
   fs.mkdirSync(OUT_DIR, { recursive: true })
 
   const wf: Record<string, number> = JSON.parse(fs.readFileSync('corpus/wordfreq_en.json', 'utf8'))
@@ -203,17 +233,28 @@ async function main() {
   const fieldKeyM = logOddsZ(C.uni, C.total, B.uni, B.total, prior, nPrior, alpha0, vocabAll)  // 分野固有頻度(レジスタ相殺)
 
   // ---- 語義信号の候補 ----
-  const senseCandidates = new Set<string>()
-  for (const [w, cnt] of C.uni) {
-    if (cnt >= CFG.minCCountSense && zipf(w) >= CFG.highFreqZipf && !STOPWORDS.has(w) && w.length >= 2) senseCandidates.add(w)
+  // C内でだけ略語として使われる同綴り異義(elf/ELF, dagger/DAgger, pow/PoW)は
+  // Aでは本物の英単語のため全体大文字率を通過する。C側の大文字率で追加排除する
+  const isAcronymInC = (w: string) => {
+    const t = C.uni.get(w) ?? 0
+    if (t < 3) return false
+    return (C.caseLower.get(w) ?? 0) / t < 0.3
   }
-  console.log(`sense candidates: ${senseCandidates.size}`)
+  const senseCandidates = new Set<string>()
+  let properSkipped = 0
+  for (const [w, cnt] of C.uni) {
+    if (cnt >= CFG.minCCountSense && zipf(w) >= CFG.highFreqZipf && !STOPWORDS.has(w) && w.length >= 3) {
+      if (isProperLike(w) || isAcronymInC(w)) { properSkipped++; continue }
+      senseCandidates.add(w)
+    }
+  }
+  console.log(`sense candidates: ${senseCandidates.size} (proper/acronym skipped: ${properSkipped})`)
 
   // ---- 文脈語彙 ----
   const ctxWords: Array<[string, number]> = []
   for (const [w, ca] of A.uni) {
     const cc = C.uni.get(w)
-    if (!cc || STOPWORDS.has(w) || w.length < 2) continue
+    if (!cc || STOPWORDS.has(w) || w.length < 3 || isProperLike(w) || isAcronymInC(w)) continue
     ctxWords.push([w, Math.min(ca / A.total, cc / C.total)])
   }
   ctxWords.sort((x, y) => y[1] - x[1])
@@ -249,6 +290,9 @@ async function main() {
     const jsdAC = jsdOf(mA, tA, mC, tC, K, lam)
     const jsdAB = tB >= CFG.minPairs ? jsdOf(mA, tA, mB, tB, K, lam) : null
     const delta = jsdAB === null ? null : jsdAC - jsdAB
+    // 学術一般語(method)と学術内危険語(value: B=固有値/C=価値関数)を分ける信号。
+    // B と C で使われ方が同じ→低、割れる→高(診断3への対処)
+    const jsdBC = tB >= CFG.minPairs ? jsdOf(mB, tB, mC, tC, K, lam) : null
 
     const ppmiTop = (m: Map<number, number>, tot: number, marg: Float64Array, margTot: number) =>
       [...m.entries()]
@@ -277,7 +321,7 @@ async function main() {
       : null
 
     results.set(w, {
-      jsdAC, jsdAB, delta, replaceGen, rgRel,
+      jsdAC, jsdAB, jsdBC, delta, replaceGen, rgRel,
       collGeneral: topA.map(([id]) => ctxName[id]),
       collField: topC.map(([id]) => ctxName[id]),
     })
@@ -294,10 +338,12 @@ async function main() {
   const fieldKeyHigh = highPool.map(w => fieldKeyM.get(w) ?? 0).sort((a, b) => a - b)
   const keyBHigh = highPool.map(w => keyBA.get(w) ?? 0).sort((a, b) => a - b)
   const jsdACs = [...results.values()].map(r => r.jsdAC).sort((a, b) => a - b)
+  const jsdBCs = [...results.values()].filter(r => r.jsdBC !== null).map(r => r.jsdBC).sort((a, b) => a - b)
   const θd = quantile(deltas, CFG.qD), θd2 = quantile(deltas, CFG.qD2), θs = quantile(jsdACs, CFG.qS)
+  const θbc = quantile(jsdBCs, CFG.qBC)
   const θk = Math.max(quantile(fieldKeyHigh, CFG.qK), CFG.minFieldKeyZ)
   const θk2 = quantile(lowPoolKeyCA, CFG.qK2), θb = quantile(keyBHigh, CFG.qB)
-  console.log(`thresholds: θd=${θd.toFixed(4)} θd2=${θd2.toFixed(4)} θs=${θs.toFixed(4)} θr=${CFG.thetaR} θk(fieldKey)=${θk.toFixed(2)} θk2(L2)=${θk2.toFixed(2)} θb=${θb.toFixed(2)}`)
+  console.log(`thresholds: θd=${θd.toFixed(4)} θd2=${θd2.toFixed(4)} θs=${θs.toFixed(4)} θr=${thetaRR} θk(fieldKey)=${θk.toFixed(2)} θk2(L2)=${θk2.toFixed(2)} θb=${θb.toFixed(2)}`)
 
   // ---- 分類 ----
   const pctRank = (sorted: number[], v: number) => {
@@ -315,10 +361,13 @@ async function main() {
     collGeneral?: string[]; collField?: string[]
   }
   const rows: Row[] = []
+  let properExcluded = 0
   for (const w of vocabAll) {
     const zp = zipf(w), r = results.get(w)
     const cntC = C.uni.get(w) ?? 0
     if (zp < CFG.highFreqZipf && cntC < CFG.minCCountL2 && !r) continue
+    // 略語・固有名詞(IL, DIME, ros, Hutchinson 等)は L4/固有名詞領域 → L2/L3/L1b に混ぜない(診断2・3)
+    if (isProperLike(w) || isAcronymInC(w) || w.length < 2) { properExcluded++; continue }
     const kCA = keyCA.get(w) ?? 0, kBA = keyBA.get(w) ?? 0, fk = fieldKeyM.get(w) ?? 0
     let level = '', bucket = ''
     const high = zp >= CFG.highFreqZipf && !STOPWORDS.has(w)
@@ -326,14 +375,23 @@ async function main() {
       const d = r?.delta ?? null
       const jAC = r?.jsdAC ?? null
       // rgRel null = B に反証材料なし → sense 系ルートでは通す(B疎=学術一般に居ない語)
-      const rgRelOk = r ? (r.rgRel === null ? true : r.rgRel >= CFG.thetaRR) : false
+      // rgRel=null(B疎)の楽観扱いは廃止(診断3): B疎語(grasping, robotics, humanoid)は
+      // 語義置換の証拠を示せないため sense-replace に乗せない。delta ルートは元々 delta≠null が必要
+      const rgRelOk = r ? (r.rgRel !== null && r.rgRel >= thetaRR) : false
       const discourse = DISCOURSE.has(w)
-      if (!discourse && d !== null && d >= θd && rgRelOk) { level = 'L3'; bucket = 'sense' }
+      // 学術頻出語(kBA≥θb)の分岐(診断3):
+      //   method/propose/existing = B と C で使われ方が同じ(jsdBC低)→ L1b へ
+      //   value/collapse/flat     = B と C で語義が割れる(jsdBC高)→ sense-academic で L3
+      const academic = kBA >= θb
+      const bc = r?.jsdBC ?? null
+      if (d !== null && d > CFG.deltaMaxJargon) { level = 'L2'; bucket = 'jargon' }  // ジャーゴンガード(診断3)
+      else if (!discourse && d !== null && d >= θd && rgRelOk) { level = 'L3'; bucket = 'sense' }
       // freq+sense に rgRel ガードを付けると robot は消えるが support 等の正例2語も失う
       // (v5実測: 再現率17→15)。頻度急増型は rgRel なしを採用し、話題語混入は precision@50 の
       // 手動採点と debug_topic の目視で監視する
       else if (!discourse && fk >= θk && d !== null && d >= θd2) { level = 'L3'; bucket = 'freq+sense' }
-      else if (!discourse && jAC !== null && jAC >= θs && rgRelOk) { level = 'L3'; bucket = 'sense-replace' }  // B にも同語義があり delta が相殺される STEM横断危険語(mass, tight)用
+      else if (!discourse && academic && bc !== null && bc >= θbc && jAC !== null && jAC >= θs) { level = 'L3'; bucket = 'sense-academic' }
+      else if (!discourse && !academic && d !== null && jAC !== null && jAC >= θs && rgRelOk) { level = 'L3'; bucket = 'sense-replace' }  // B にも同語義があり delta が相殺される STEM横断危険語(tight, hard)用
       else if (fk >= θk) { level = 'L1a'; bucket = 'topic-suspect' }   // 保留(破棄しない・復活は再ビルドで)
       else if (kBA >= θb && fk < θk) { level = 'L1b'; bucket = 'academic' }
       else { level = 'L1a'; bucket = 'plain' }
@@ -345,11 +403,12 @@ async function main() {
     const pK = pctRank(fieldKeyHigh, fk)
     // 話題語疑いフラグ(Phase 2a レビュー判断1): 語義証拠が弱いままL3入りした語を
     // UIで視覚的に区別できるようにする(後で消せるフラグとして保持)
-    const topicRisk = level === 'L3' && bucket === 'freq+sense' && !(r && r.rgRel !== null && r.rgRel >= CFG.thetaRR)
+    const topicRisk = level === 'L3' && bucket === 'freq+sense' && !(r && r.rgRel !== null && r.rgRel >= thetaRR)
     rows.push({
       word: w, zipf: zp, cntA: A.uni.get(w) ?? 0, cntB: B.uni.get(w) ?? 0, cntC,
       keynessB: +kBA.toFixed(2), keynessC: +kCA.toFixed(2), fieldKey: +fk.toFixed(2),
       jsdAC: r ? +r.jsdAC.toFixed(4) : null, jsdAB: r?.jsdAB != null ? +r.jsdAB.toFixed(4) : null,
+      jsdBC: r?.jsdBC != null ? +r.jsdBC.toFixed(4) : null,
       delta: r?.delta != null ? +r.delta.toFixed(4) : null, replaceGen: r ? +r.replaceGen.toFixed(3) : null,
       rgRel: r?.rgRel != null ? +r.rgRel.toFixed(3) : null,
       score: +Math.max(pS, pK).toFixed(4), level, bucket,
@@ -360,8 +419,8 @@ async function main() {
 
   // ---- 出力 ----
   const middata = {
-    builtWith: CFG,
-    thresholds: { θd, θd2, θs, θr: CFG.thetaR, θk, θk2, θb },
+    builtWith: { ...CFG, thetaRR },
+    thresholds: { θd, θd2, θs, θbc, θr: thetaRR, θk, θk2, θb },
     tokens: { A: A.total, B: B.total, C: C.total },
     rows,
   }
@@ -388,7 +447,8 @@ async function main() {
   fs.writeFileSync('public/data/vocab_table.json',
     JSON.stringify({ version: 1, domain: 'cs.RO+cs.LG', builtAt: 'phase2a-poc', entries, lemma: {} }))
 
-  console.log(`levels: L3=${l3.length} (sense=${l3.filter(x => x.bucket === 'sense').length}, freq+sense=${l3.filter(x => x.bucket === 'freq+sense').length}, sense-replace=${l3.filter(x => x.bucket === 'sense-replace').length})  L2=${l2.length}  L1b=${l1b.length}  topic-suspect=${rows.filter(x => x.bucket === 'topic-suspect').length}  L1a-plain=${rows.filter(x => x.bucket === 'plain').length}`)
+  console.log(`levels: L3=${l3.length} (sense=${l3.filter(x => x.bucket === 'sense').length}, freq+sense=${l3.filter(x => x.bucket === 'freq+sense').length}, sense-replace=${l3.filter(x => x.bucket === 'sense-replace').length}, sense-academic=${l3.filter(x => x.bucket === 'sense-academic').length})  L2=${l2.length}  L1b=${l1b.length}  topic-suspect=${rows.filter(x => x.bucket === 'topic-suspect').length}  L1a-plain=${rows.filter(x => x.bucket === 'plain').length}`)
+  console.log(`proper/acronym excluded from classification: ${properExcluded}`)
   console.log(`vocab_table.json: ${(fs.statSync('public/data/vocab_table.json').size / 1024).toFixed(0)} KB`)
   console.timeEnd('total')
 }

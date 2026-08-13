@@ -18,13 +18,21 @@ export function sentences(text: string): string[] {
 }
 
 /**
- * トークナイズ: 小文字化し、英字(内部のハイフン・アポストロフィ許容)のみ。
+ * トークナイズ(大文字小文字を保持): 英字(内部のハイフン・アポストロフィ許容)のみ。
  * ハイフン語(model-free)は1トークンとして保持(architecture.md §3.1)。
  * 数字混じり(cite key 等)は落ちる。
+ * 大文字情報は略語(IL, DIME, PoW)・固有名詞(Hutchinson, Fu)の検出に使う —
+ * これらは L4/固有名詞領域であり、小文字化して L3 機構に混ぜてはならない
+ * (precision@50 20% の主因のひとつ。診断2)。
  */
-export function tokenize(sentence: string): string[] {
-  const m = sentence.toLowerCase().match(/[a-z](?:[a-z'-]*[a-z])?/g)
+export function tokenizeRaw(sentence: string): string[] {
+  const m = sentence.match(/[A-Za-z](?:[A-Za-z'-]*[A-Za-z])?/g)
   return m ?? []
+}
+
+/** 小文字化版(後方互換。check_bundle 等で使用) */
+export function tokenize(sentence: string): string[] {
+  return tokenizeRaw(sentence).map(t => t.toLowerCase())
 }
 
 /**
