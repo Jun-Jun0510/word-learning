@@ -193,6 +193,15 @@ flowchart LR
 
 **対処案**: C を R / L の2系統統計に分割し、語義信号を max(senseShift_R, senseShift_L) で取る(どちらかの分野で語義がズレれば危険語)。ピンの pinReason に「R/L別統計で再判定」と書かれた語が自動検出に戻れるかが導入時の検証項目。**次に同種の問題が出たら実装判断する**(発注者指示)。
 
+## 7.2 Phase 2b 設計事項: 語幹グルーピング表示(発見3、phase2a_gate_result.md)
+
+precision@50 で50枠中9枠が同一語幹の変化形(navigation/navigate/navigating 等)に消費された。予習モード上限20語では約2割の枠が重複で潰れる計算。
+
+- **抽出は表層形のまま**(単純レンマ化は禁止: demonstration=L3妥当 / demonstrate=学術一般 のように判定が割れており、統合すると妥当な方が消える)
+- **表示側で同一語幹をグルーピング**: 代表語1つを主表示、変化形は折りたたみ。上限20語のカウントはグループ単位
+- 代表語の選び方(スコア最大 or 出現回数最大)は 2b の設計判断。語幹判定は保守的に(vocab_table の lemma 表 + 派生接辞の限定セット)
+- known マーキングの単位はグループか表層形か → 2b で決定(グループ単位が「使うほど軽くなる」導線に整合的)
+
 ## 8. Phase 2 実装順(requirements §8 の 2a/2b/2c に対応)
 
 1. **[2a]** pipeline 最小版: コーパス調達(A共起=OpenSubtitles、B/C=Kaggle arXiv)→前処理→2信号+話題語ガード→vocab_table.json
