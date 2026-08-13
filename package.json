@@ -11,7 +11,10 @@
     "fetch:b": "tsx pipeline/fetch/fetch_arxiv.ts --profile B",
     "fetch:a": "bash pipeline/fetch/fetch_general.sh",
     "build:stats": "tsx pipeline/compute/build.ts",
-    "eval": "tsx pipeline/eval/evaluate.ts"
+    "eval": "tsx pipeline/eval/evaluate.ts",
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
   },
   "repository": {
     "type": "git",
@@ -25,14 +28,24 @@
   },
   "homepage": "https://github.com/Jun-Jun0510/word-learning#readme",
   "devDependencies": {
+    "@tailwindcss/vite": "^4.3.3",
     "@types/js-yaml": "^4.0.9",
     "@types/node": "^26.2.0",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.4",
+    "@vitejs/plugin-react": "^6.0.5",
     "fast-xml-parser": "^5.10.1",
     "js-yaml": "^5.2.3",
+    "tailwindcss": "^4.3.3",
     "tsx": "^4.23.12",
     "typescript": "^7.0.2",
+    "vite": "^8.2.1",
     "wink-lemmatizer": "^3.0.4"
   },
   "private": true,
-  "type": "module"
+  "type": "module",
+  "dependencies": {
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8"
+  }
 }

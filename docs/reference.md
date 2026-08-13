@@ -25,7 +25,10 @@
 | `docs/phase2a_review.md` | Phase 2a レビューの**原文**。検証セット/汎化の訂正、判断3件(話題語混入許容+⚑フラグ、Cコーパス構成先行、語義スキーマ即決)、held-out 10語の運用 | 2a | 済 |
 | `docs/proposal_c_corpus.md` | Cコーパス構成の提案(承認待ち)。推奨=R60/L40・音響除外。収集方法(日付スライス)と before/after 検証計画 | 2a→2b | **承認待ち** |
 | `docs/proposal_sense_schema.md` | 語義単位スキーマの提案(承認待ち)。検出は語単位・ステータスは語義単位・未整備語はデフォルト語義。マイグレーション含む | 2a→2b | **承認待ち** |
-| `docs/setup_frontend.md` | フロントエンド選定理由と初期セットアップ手順(Q10) | 2b | 未着手(Phase 2b で作成) |
+| `docs/setup_frontend.md` | フロントエンド選定理由と初期セットアップ手順(Q10)。既知TODO(バンドル削減・グルーピング等)含む | 2b | 済 |
+| `docs/phase2a_review2_recall_pivot.md` 〜 `docs/phase2a_close_approval.md` | ゲートv2転換 / B拡張承認 / 過適合警告4周目 / precision採点(38%合格) / クローズ承認の各**原文** | 2a | 済 |
+| `docs/summary_heldout_and_flags.md` | held-out ゲート結果(再現率90%)と⚑診断(3系統混在、表示保留の根拠) | 2a | 済 |
+| `docs/summary_precision_fixes.md` | precision 20% への3診断対応と、ゲートv2での回復・B拡張 before/after の記録 | 2a | 済 |
 
 ## pipeline/(コード・データ)
 
