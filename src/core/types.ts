@@ -8,6 +8,8 @@ export interface VocabEntry {
   /** Cコーパスで当該語を含む abstract の割合(順位付け層 idf 用。algorithm.md §3.3) */
   df?: number
   topicRisk?: boolean
+  /** キュレーション・ピン(data/senses.yaml 由来。分布判定によらないL3収載) */
+  pinned?: boolean
   collGeneral?: string[]
   collField?: string[]
   senses?: Array<{ id: string; domainSense: string; contrast: string; ja: string }>

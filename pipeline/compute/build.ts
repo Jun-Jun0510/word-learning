@@ -25,6 +25,7 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import * as readline from 'node:readline'
+import * as yaml from 'js-yaml'
 import lemmatizer from 'wink-lemmatizer'
 import { stripLatex, sentences, tokenizeRaw, STOPWORDS, DISCOURSE } from './text.ts'
 
@@ -472,8 +473,36 @@ async function main() {
       ...(x.level === 'L3' ? { collGeneral: x.collGeneral, collField: x.collField } : {}),
     }
   }
+  // 語義キュレーション + L3ピンのマージ(data/senses.yaml。proposal_sense_schema.md 承認済み):
+  // 登録語は分布判定と無関係に L3 収載(ピン)。senses を entry に付与。
+  // ピンのみ(=アルゴリズム検出失敗)の語は eval_report が恒久記録する(条件a)
+  try {
+    const curated = yaml.load(fs.readFileSync('data/senses.yaml', 'utf8')) as Record<string, any>
+    for (const [w, def] of Object.entries(curated)) {
+      if (!def?.senses) continue
+      if (entries[w]) {
+        entries[w].senses = def.senses
+        if (entries[w].level !== 'L3') { entries[w].level = 'L3'; entries[w].pinned = true }
+      } else {
+        entries[w] = {
+          level: 'L3', score: 0.5, pinned: true,
+          df: +((docFreq.get(w) ?? 0) / numDocsC).toFixed(5),
+          senses: def.senses,
+        }
+      }
+    }
+  } catch { console.log('data/senses.yaml なし(スキップ)') }
+
+  // レンマ表の焼き込み: コーパス処理で観測した (表層形→名詞レンマ) を反転し、
+  // 収載語に到達する変化形だけを配信する。ブラウザから wink-lemmatizer(≈1.5MB)を排除する
+  // (architecture.md §3.1 当初案への回帰。setup_frontend.md TODO-1)
+  const lemmaOut: Record<string, string> = {}
+  for (const [surface, l] of lemmaCache) {
+    if (surface !== l && entries[l] && surface.length >= 2) lemmaOut[surface] = l
+  }
   fs.writeFileSync('public/data/vocab_table.json',
-    JSON.stringify({ version: 1, domain: 'cs.RO+cs.LG', builtAt: 'phase2a-poc', entries, lemma: {} }))
+    JSON.stringify({ version: 1, domain: 'cs.RO+cs.LG', builtAt: 'phase2a-poc', entries, lemma: lemmaOut }))
+  console.log(`lemma map: ${Object.keys(lemmaOut).length} variants`)
 
   console.log(`levels: L3=${l3.length} (sense=${l3.filter(x => x.bucket === 'sense').length}, freq+sense=${l3.filter(x => x.bucket === 'freq+sense').length}, sense-replace=${l3.filter(x => x.bucket === 'sense-replace').length}, sense-academic=${l3.filter(x => x.bucket === 'sense-academic').length}, academic-rg=${l3.filter(x => x.bucket === 'sense-academic-rg').length}, topic-flagged⚑=${l3.filter(x => x.bucket === 'topic-flagged').length})  L2=${l2.length}  L1b=${l1b.length}  topic-suspect=${rows.filter(x => x.bucket === 'topic-suspect').length}  L1a-plain=${rows.filter(x => x.bucket === 'plain').length}`)
   console.log(`proper/acronym excluded from classification: ${properExcluded}`)
