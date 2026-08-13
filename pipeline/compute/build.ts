@@ -473,6 +473,24 @@ async function main() {
       ...(x.level === 'L3' ? { collGeneral: x.collGeneral, collField: x.collField } : {}),
     }
   }
+  // 生成済み語義のマージ(data/glosses_generated.yaml。案A・プリベイク)。
+  // senses.yaml(手書き)のマージが後段で走り上書きするため、優先順位は 手書き > 生成
+  try {
+    const gen = yaml.load(fs.readFileSync('data/glosses_generated.yaml', 'utf8')) as Record<string, any>
+    let merged = 0
+    for (const [w, g] of Object.entries(gen ?? {})) {
+      if (!entries[w] || !g?.domainSense) continue
+      entries[w].senses = [{
+        id: `${w}#gen`, domainSense: g.domainSense,
+        ...(g.contrast ? { contrast: g.contrast } : {}),
+        ...(g.jaGeneral ? { jaGeneral: g.jaGeneral } : {}),
+        ja: g.ja,
+      }]
+      merged++
+    }
+    console.log(`generated glosses merged: ${merged}`)
+  } catch { console.log('data/glosses_generated.yaml なし(スキップ)') }
+
   // 語義キュレーション + L3ピンのマージ(data/senses.yaml。proposal_sense_schema.md 承認済み):
   // 登録語は分布判定と無関係に L3 収載(ピン)。senses を entry に付与。
   // ピンのみ(=アルゴリズム検出失敗)の語は eval_report が恒久記録する(条件a)

@@ -14,7 +14,9 @@
     "eval": "tsx pipeline/eval/evaluate.ts",
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "bake:glosses": "tsx pipeline/bake_glosses.ts",
+    "gloss:inspect": "tsx pipeline/eval/gloss_inspection.ts"
   },
   "repository": {
     "type": "git",
