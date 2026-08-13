@@ -50,6 +50,9 @@ function resolve(table: VocabTable, surface: string): string | null {
 export interface AnalysisResult {
   l3: DocWord[]
   l2: DocWord[]
+  /** L1b(論文英語層)。予習モードには表示しないが単語帳には保存する —
+   *  「分野を問わず再利用できる長期資産」(phase0_answers.md §2)。表示上の判断と保存は別 */
+  l1b: DocWord[]
   totalTokens: number
   unmatchedRatio: number   // レンマ表未ヒット率(照合漏れの計測。architecture.md §3.1)
 }
@@ -105,6 +108,7 @@ export function analyze(text: string, table: VocabTable): AnalysisResult {
   return {
     l3: rows.filter(w => w.entry.level === 'L3').sort(byRank),
     l2: rows.filter(w => w.entry.level === 'L2').sort(byRank),
+    l1b: rows.filter(w => w.entry.level === 'L1b').sort(byRank),
     totalTokens,
     unmatchedRatio: totalTokens ? 1 - matched / totalTokens : 0,
   }

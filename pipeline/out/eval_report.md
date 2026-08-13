@@ -6,8 +6,8 @@
 > 未知語に対する汎化性能を示すのは precision@50(手動採点)と、Phase 2b ゲート用
 > held-out セット(参照禁止)のみ。
 
-生成: build thresholds θd=0.0839 θd2=0.0467 θk(fieldKey)=10.00
-コーパス tokens: A=38,540,515 B=9,206,457 C=13,183,216
+生成: build thresholds θd=0.0840 θd2=0.0468 θk(fieldKey)=10.00
+コーパス tokens: A=38,540,515 B=9,204,490 C=13,181,136
 
 ## ゲート数値
 
@@ -27,49 +27,49 @@
 
 | 語 | signal | 判定 | bucket | zipf | fieldKey | jsdAC | jsdAB | delta | rg | 結果 | 落ちた段 |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| return | sense_shift | L3 | sense-replace | 5.2 | -1.16 | 0.6399 | 0.6152 | 0.0247 | 0.667 | ✓ | - |
-| support | sense_shift | L3 | sense-academic-rg | 5.5 | -5.74 | 0.6448 | 0.6318 | 0.0130 | 0.364 | ✓ | - |
-| mass | sense_shift | L3 | sense-academic | 4.9 | -43.53 | 0.5523 | 0.6305 | -0.0782 | 0.194 | ✓ | - |
-| hard | sense_shift | L3 | sense-replace | 5.5 | 5.20 | 0.7182 | 0.7021 | 0.0161 | 0.563 | ✓ | - |
-| tight | sense_shift | L3 | sense-replace | 4.6 | -8.69 | 0.6492 | 0.6604 | -0.0111 | 0.795 | ✓ | - |
-| regret | sense_shift | L3 | sense | 4.4 | 20.41 | 0.6360 | 0.4885 | 0.1475 | 0.861 | ✓ | - |
-| collapse | sense_shift | L3 | sense-academic-rg | 4.2 | 5.85 | 0.5336 | 0.4589 | 0.0747 | 0.498 | ✓ | - |
-| greedy | sense_shift | L3 | sense-academic-rg | 3.8 | 1.77 | 0.4512 | 0.3934 | 0.0577 | 1.000 | ✓ | - |
-| primitive | sense_shift | L3 | sense | 3.8 | 8.52 | 0.5623 | 0.4720 | 0.0903 | 0.543 | ✓ | - |
+| return | sense_shift | L3 | sense-replace | 5.2 | -1.16 | 0.6399 | 0.6152 | 0.0248 | 0.667 | ✓ | - |
+| support | sense_shift | L3 | sense-academic-rg | 5.5 | -5.74 | 0.6448 | 0.6318 | 0.0129 | 0.364 | ✓ | - |
+| mass | sense_shift | L3 | sense-academic | 4.9 | -43.53 | 0.5523 | 0.6306 | -0.0783 | 0.195 | ✓ | - |
+| hard | sense_shift | L3 | sense-replace | 5.5 | 5.13 | 0.7181 | 0.7020 | 0.0161 | 0.563 | ✓ | - |
+| tight | sense_shift | L3 | sense-replace | 4.6 | -8.69 | 0.6492 | 0.6603 | -0.0111 | 0.795 | ✓ | - |
+| regret | sense_shift | L3 | sense | 4.4 | 20.40 | 0.6360 | 0.4885 | 0.1475 | 0.861 | ✓ | - |
+| collapse | sense_shift | L3 | sense-academic-rg | 4.2 | 5.85 | 0.5336 | 0.4593 | 0.0743 | 0.488 | ✓ | - |
+| greedy | sense_shift | L3 | sense-academic-rg | 3.8 | 1.77 | 0.4511 | 0.3934 | 0.0577 | 1.000 | ✓ | - |
+| primitive | sense_shift | L3 | sense | 3.8 | 8.50 | 0.5623 | 0.4720 | 0.0902 | 0.543 | ✓ | - |
 | flat | sense_shift | L3 | sense-academic | 4.7 | -10.38 | 0.5858 | 0.5836 | 0.0022 | 0.662 | ✓ | - |
 
 ## positives 診断 — both 群
 
 | 語 | signal | 判定 | bucket | zipf | fieldKey | jsdAC | jsdAB | delta | rg | 結果 | 落ちた段 |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| head | both | L3 | freq+sense | 5.5 | 25.68 | 0.7176 | 0.6699 | 0.0477 | 0.114 | ✓ | - |
+| head | both | L3 | freq+sense | 5.5 | 25.68 | 0.7175 | 0.6699 | 0.0476 | 0.114 | ✓ | - |
 | grounding | both | L3 | sense | 3.3 | 20.52 | 0.5023 | 0.2745 | 0.2277 | 0.953 | ✓ | - |
-| manipulation | both | L3 | sense | 3.9 | 64.53 | 0.6476 | 0.3638 | 0.2838 | 0.636 | ✓ | - |
-| demonstration | both | L3 | sense | 4.1 | 46.98 | 0.6273 | 0.3781 | 0.2491 | 0.469 | ✓ | - |
-| prior | both | L3 | freq+sense | 4.8 | 38.59 | 0.6282 | 0.5699 | 0.0584 | 0.017 | ✓ | - |
-| policy | both | L3 | sense | 5.2 | 90.73 | 0.6745 | 0.5741 | 0.1004 | 0.828 | ✓ | - |
-| value | both | L3 | sense-academic-rg | 5.2 | -26.91 | 0.6392 | 0.6162 | 0.0230 | 0.763 | ✓ | - |
-| attention | both | L3 | freq+sense | 5.1 | 41.72 | 0.7179 | 0.6505 | 0.0673 | 0.745 | ✓ | - |
-| dense | both | L3 | sense | 4.0 | 20.73 | 0.5904 | 0.4840 | 0.1064 | 0.633 | ✓ | - |
+| manipulation | both | L3 | sense | 3.9 | 64.55 | 0.6476 | 0.3639 | 0.2837 | 0.637 | ✓ | - |
+| demonstration | both | L3 | sense | 4.1 | 46.98 | 0.6273 | 0.3783 | 0.2489 | 0.468 | ✓ | - |
+| prior | both | L3 | freq+sense | 4.8 | 38.58 | 0.6283 | 0.5699 | 0.0584 | 0.017 | ✓ | - |
+| policy | both | L3 | sense | 5.2 | 90.73 | 0.6744 | 0.5741 | 0.1003 | 0.828 | ✓ | - |
+| value | both | L3 | sense-academic-rg | 5.2 | -26.92 | 0.6391 | 0.6162 | 0.0230 | 0.763 | ✓ | - |
+| attention | both | L3 | freq+sense | 5.1 | 41.73 | 0.7178 | 0.6504 | 0.0675 | 0.745 | ✓ | - |
+| dense | both | L3 | sense | 4.0 | 20.73 | 0.5904 | 0.4839 | 0.1064 | 0.633 | ✓ | - |
 | augmentation | both | L1a | topic-suspect | 3.0 | 20.79 | — | — | — | — | ✗ | 4. 話題語ガード誤爆 |
 
 ## negatives — 話題語型(ガードの検証)
 
 | 語 | 判定 | bucket | fieldKey | jsdAC | jsdAB | delta | rg | 結果 |
 |---|---|---|---|---|---|---|---|---|
-| robot | L3 | freq+sense | 81.82 | 0.6226 | 0.4421 | 0.1805 | 0.246 | ✗ 混入 |
-| controller | L3 | sense | 54.04 | 0.5895 | 0.3540 | 0.2355 | 0.632 | ✗ 混入 |
-| dataset | L1a | topic-suspect | 53.90 | — | — | — | — | ✓ |
+| robot | L3 | freq+sense | 81.74 | 0.6226 | 0.4417 | 0.1808 | 0.247 | ✗ 混入 |
+| controller | L3 | sense | 54.04 | 0.5894 | 0.3539 | 0.2356 | 0.628 | ✗ 混入 |
+| dataset | L1a | topic-suspect | 53.93 | — | — | — | — | ✓ |
 | benchmark | L1a | topic-suspect | 44.92 | — | — | — | — | ✓ |
-| simulation | L3 | topic-flagged | 21.49 | 0.6532 | 0.6210 | 0.0322 | 0.747 | ✗ 混入 |
+| simulation | L3 | topic-flagged | 21.47 | 0.6533 | 0.6212 | 0.0320 | 0.747 | ✗ 混入 |
 
 ## negatives — 一般語型(候補プール入口の検証)
 
 | 語 | 判定 | bucket | fieldKey | jsdAC | jsdAB | delta | rg | 結果 |
 |---|---|---|---|---|---|---|---|---|
 | however | (なし) | - | — | — | — | — | — | ✓ |
-| increase | L1b | academic | -10.29 | 0.5617 | 0.5202 | 0.0415 | 0.275 | ✓ |
-| describe | L3 | sense-academic-rg | -19.15 | 0.5080 | 0.5244 | -0.0164 | 0.810 | ✗ 混入 |
+| increase | L1b | academic | -10.31 | 0.5616 | 0.5202 | 0.0414 | 0.276 | ✓ |
+| describe | L3 | sense-academic-rg | -19.16 | 0.5080 | 0.5244 | -0.0164 | 0.810 | ✗ 混入 |
 
 ## キュレーション・ピン登録語(条件a: アルゴリズムが拾えなかった語の恒久記録)
 
@@ -77,8 +77,18 @@
 
 | 語 | アルゴリズム判定 | ピンのみ?(=検出失敗) | pinReason |
 |---|---|---|---|
-| mass | L3/sense-academic | —(検出済み) | C構成がR重心のため物理質量が支配語義になり、確率質量の語義信号が消滅(2026-08-13 の before/after 検証。R/L別統計を入れたら再判定) |
-| prior | L3/freq+sense | —(検出済み) | アルゴリズムでも検出済み(freq+sense)だが、品詞で語義が割れるため語義キュレーションが必要(検出失敗によるピンではない) |
+| mass | L3/sense-academic | —(検出済み) | C構成がR重心のため確率質量の信号が不安定(現ビルドでは検出済み。語義データ目的も兼ねる) |
+| prior | L3/freq+sense | —(検出済み) | 検出済み(語義データ目的)。品詞で語義が割れる代表例 |
+| curriculum | L3/sense | —(検出済み) | 検出済み(語義データ目的)。発注者UI確認で本命指定 — 日常の意味で読むと確実に誤読する |
+| disturbance | L3/sense | —(検出済み) | 検出済み(語義データ目的)。制御読者には既知だが対比例として発注者指定 |
+| actor | L3/sense-replace | —(検出済み) | 検出済み(語義データ目的)。一般語義「俳優」との対比が典型 |
+| tight | L3/sense-replace | —(検出済み) | 検出済み(語義キュレーション: cs.LG=bound / cs.RO=公差 で語義が割れる。抜き取り検査) |
+| flat | L3/sense-academic | —(検出済み) | 検出済み(語義キュレーション: cs.LG=minima / cs.RO=地形 で語義が割れる。抜き取り検査) |
+| collapse | L3/sense-academic-rg | —(検出済み) | 検出済み(語義キュレーション: cs.LG=mode collapse / cs.RO=機能崩壊 で語義が割れる。抜き取り検査) |
+| demonstration | L3/sense | —(検出済み) | 検出済み(語義キュレーション: 生成が模倣学習の語義を外したため上書き。抜き取り検査) |
+| hard | L3/sense-replace | —(検出済み) | 検出済み(語義キュレーション: 生成がNP困難を選び hard negative を外したため上書き。抜き取り検査) |
+| anchor | L3/sense | —(検出済み) | 検出済み(語義キュレーション: 生成がViT/GNN基準点を選び対照学習を外したため上書き。抜き取り検査) |
+| conditioning | L3/sense | —(検出済み) | 生成誤りの上書き(生成は正規化/preconditioningの説明を書いた。実地検証1本目で発見)。L3本命級 — 日常の「条件づけ」からズレ、誤解すると論文主旨を取り違える |
 
 ## 既知の不一致(発注者承認済み。正解セットは凍結のまま)
 

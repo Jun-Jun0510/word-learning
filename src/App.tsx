@@ -204,7 +204,9 @@ export default function App() {
     setResult(r)
     setDocId(id)
     const title = text.trim().split('\n')[0].slice(0, 50)
-    persist(WB.record(wb, id, title, [...r.l3, ...r.l2].map(w => ({
+    // 保存は L3/L2/L1b の3層(L1b は予習に出さないが長期資産として単語帳に貯める。
+    // 表示上の判断と保存を混ぜない — 2本目所感のバグ修正)
+    persist(WB.record(wb, id, title, [...r.l3, ...r.l2, ...r.l1b].map(w => ({
       entryKey: w.entryKey, entry: w.entry, count: w.count, sentence: w.sentence,
     }))))
   }

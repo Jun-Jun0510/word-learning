@@ -3,9 +3,16 @@
  * pipeline と将来の実行時(src/core)で同じ仕様を共有する。
  */
 
-/** LaTeX・URL 除去: インライン/ディスプレイ数式、コマンド、引用マクロ、URL断片 */
+/** LaTeX・URL 除去: インライン/ディスプレイ数式、コマンド、引用マクロ、URL断片。
+ *  改行ハイフンの結合も行う(判定用・表示用の共通前処理) */
 export function stripLatex(text: string): string {
   return text
+    // 改行ハイフンの結合(phase2b 実地検証2本目のバグ修正。凍結対象外の前処理):
+    // "tar- get" / "funda-\nmentally" → target / fundamentally。
+    // 正規のハイフン語(sim-to-real)はハイフン直後に空白が無いためマッチしない。
+    // 限界: 複合語自体が行末で折り返された場合("vision- language")は "visionlanguage" に
+    // なり未照合で落ちる(断片汚染よりは安全側)。
+    .replace(/([a-z])-\s+([a-z])/g, '$1$2')
     .replace(/\$\$[\s\S]*?\$\$/g, ' ')
     .replace(/\$[^$]*\$/g, ' ')
     .replace(/https?:\/\/\S+/g, ' ')               // URL(github.com 等の断片 'com' が語彙に混入するのを防ぐ)

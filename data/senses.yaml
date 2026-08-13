@@ -133,6 +133,9 @@ hard:
       jaGeneral: "難しい、硬い"
       ja: "hard negative(対照学習で意図的に選ぶ紛らわしい負例)"
 
+# 記録(2本目実地検証): FM-VLA 論文の Anchor-Align は別用法(凍結VLMからの表現アンカリング)。
+# 手書き上書きにより対照学習側に固定されている。実害はないが、多義(anchor#contrastive +
+# anchor#repr 等)として持たせるべき語だった可能性あり — 3例目が出たら分割する
 anchor:
   pinReason: "検出済み(語義キュレーション: 生成がViT/GNN基準点を選び対照学習を外したため上書き。抜き取り検査)"
   senses:
