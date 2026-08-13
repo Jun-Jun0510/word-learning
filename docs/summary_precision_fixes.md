@@ -62,6 +62,23 @@
 
 結果: **再現率 19/20(必須≥18 ✅)、sense_shift 10/10(必須≥9 ✅)**。残る取りこぼしは augmentation(既知の不一致)のみ。副作用として describe が sense-academic-rg 経由で混入(rgRel 0.82 で分離不能。自己修復側として許容)。
 
+## 追記(2026-08-13): B拡張(CS 12.5%→36%)の before/after
+
+B = 9.2Mトークン(+2.6M)。ゲートv2維持(19/20, sense_shift 10/10)。名指し確認(発注者指示):
+
+| 語 | 判定 before → after | kBA | fieldKey | delta |
+|---|---|---|---|---|
+| **policy** | freq+sense → **sense(改善)** | 67.6→77.9 | 79.9→90.7 | 0.122→0.100 |
+| **agent** | topic-flagged⚑ → topic-flagged⚑(維持) | 60.7→103.5 | 52.5→35.2 | 0.050→0.025 |
+| propose | freq+sense(残存) | 80.2→87.3 | 70.4→69.6 | **0.081→0.050** |
+| proposed | freq+sense(残存) | 64.2→67.1 | 55.8→56.6 | **0.087→0.055** |
+| existing | freq+sense(残存) | 50.0→54.4 | 56.2→43.3 | **0.088→0.053** |
+| support | topic-flagged → sense-academic-rg(維持・良化) | 69.9→94.2 | 11.8→−5.7 | — |
+
+- **policy / agent は無破壊**(cs.CR 除外は不要)。policy はむしろ fieldKey が上がり sense ルートに昇格
+- **文体差診断は正しかった**: propose / proposed / existing の delta は約4割縮小(相殺が効き始めた)。ただし fieldKey が依然高く freq+sense で残存 — B を CS 100% にしない限り完全相殺はしない(それは B の意義を壊すため不実施)。残りは自己修復側として許容
+- **com / github は語彙から消滅**(URL除去)。sim は正規のドメインスラングとして残存(発生源調査済み)
+
 ## 残課題(忖度なし)
 
 1. **残存話題語16語(trajectory, motion, planning, robot 等)は一次分布統計の限界**。rgRel・delta・jsdBC のどの軸でも妥当語と重なる(実測)。「robot の文脈変化(話題)」と「return の文脈変化(語義)」は一次共起では同じに見える。**発注者が判断1で示した条件「C拡充後も混入するなら第3信号を検討」は成立した** — SGNS+OP 等への投資判断を仰ぐ

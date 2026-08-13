@@ -112,7 +112,7 @@
 |---|---|---|---|---|
 | A 頻度 | **wordfreq** | pip / MIT | 集計値再配布OK(SUBTLEX系は要帰属) | 2024年sunsetだが最終版で本用途に十分([SUNSET.md](https://github.com/rspeer/wordfreq/blob/master/SUNSET.md)) |
 | **A 共起** | **OpenSubtitles(OPUS)を第一候補** | OPUS | 配布可 | **wordfreqは頻度リストのみで共起を持たない**ため生テキストが別途必須。**Wikipediaは不採用**: 百科事典のため kernel(SVM)/sample(統計)等の技術語義を既に含み、一般側分布が汚染されて senseShiftC が過小評価される。日常英語(SUBTLEX思想)を代表する OpenSubtitles が「読者が誤読する側の語義」に合致 |
-| B 学術一般 | **arXiv全分野 abstract のランダムサンプル、ただし cs.RO / cs.LG は除外** | Kaggle arXiv | abstract=CC0 | **CをBに包含させない**(包含すると A-vs-B と A-vs-C のkeynessが相関しL1b弁別が壊れる)。規模不足なら S2ORC(ODC-BY 1.0)へ拡張。COCA-Academic は再配布不可のため除外 |
+| B 学術一般 | **arXiv abstract 22カテゴリ均等クォータ(各2,500件)。cs.RO / cs.LG / ML隣接は除外。非ML系CS 8カテゴリ(DS, CR, SE, PL, DB, NI, IT, LO)= 36% で CS文体を代表** | arXiv API(新しい順) | abstract=CC0 | CをBに包含させない(keyness汚染)。CS比率12.5%の初版は math/物理文体に偏り、propose 等のCS文体語が delta で相殺されなかったため 2026-08-13 拡張(policy / agent の名指し回帰で無破壊を確認) |
 | C 分野 | **Kaggle arXiv dataset** の cs.RO + cs.LG | [Kaggle](https://www.kaggle.com/datasets/Cornell-University/arxiv)(週次更新) | metadata(abstract含む)= **CC0** | cs.LG単独で年4.6万件級。abstractで数千万トークン規模。全文が要るなら増強パス2 |
 
 - **コーパスサイズ非対称への対処**: A(OpenSubtitles)とCで規模が桁違いになるため、文脈分布はスムージング付き確率に正規化し、必要なら sub-sampling でトークン数オーダーを揃える。
