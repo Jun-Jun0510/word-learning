@@ -26,6 +26,12 @@ const B_CATS: Array<[string, number]> = [
   ['physics.flu-dyn', 2500], ['physics.optics', 2500], ['quant-ph', 2500],
   ['q-bio.PE', 2500], ['q-bio.NC', 2500], ['econ.GN', 2500], ['stat.ME', 2500],
   ['cs.DS', 2500], ['cs.CR', 2500],
+  // 2026-08-13 B拡張(phase2a_review3_approval.md): CS文体の代表性を12.5%→36%へ。
+  // propose/existing 等のCS文体語が delta で相殺されない問題への対処。
+  // 注意: policy(cs.CRのアクセス制御ポリシー)/ agent の keyness 低下リスクは
+  // before/after で名指し確認する(壊れたら cs.CR を除外して再測定)
+  ['cs.SE', 2500], ['cs.PL', 2500], ['cs.DB', 2500], ['cs.NI', 2500],
+  ['cs.IT', 2500], ['cs.LO', 2500],
 ]
 
 const PAGE = 1000

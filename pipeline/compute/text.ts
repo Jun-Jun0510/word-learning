@@ -3,11 +3,13 @@
  * pipeline と将来の実行時(src/core)で同じ仕様を共有する。
  */
 
-/** LaTeX 除去: インライン/ディスプレイ数式、コマンド、引用マクロ */
+/** LaTeX・URL 除去: インライン/ディスプレイ数式、コマンド、引用マクロ、URL断片 */
 export function stripLatex(text: string): string {
   return text
     .replace(/\$\$[\s\S]*?\$\$/g, ' ')
     .replace(/\$[^$]*\$/g, ' ')
+    .replace(/https?:\/\/\S+/g, ' ')               // URL(github.com 等の断片 'com' が語彙に混入するのを防ぐ)
+    .replace(/\b[\w-]+(\.[\w-]+)*\.(com|org|net|io|edu|gov|ai)\b\S*/g, ' ')  // スキームなしドメイン
     .replace(/\\[a-zA-Z]+\*?(\[[^\]]*\])?/g, ' ')  // \cite \textbf \alpha 等(引数の中身は残す)
     .replace(/[{}~]/g, ' ')
 }
