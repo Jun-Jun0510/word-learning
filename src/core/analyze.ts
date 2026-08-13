@@ -54,11 +54,19 @@ export function analyze(text: string, table: VocabTable): AnalysisResult {
     }
   }
   const rows = [...found.values()]
-  // 出現回数は足切りに使わない(要件 §5.2)。ソートは score 降順 → 出現回数降順
-  const byScore = (a: DocWord, b: DocWord) => (b.entry.score - a.entry.score) || (b.count - a.count)
+  // 順位付け層(algorithm.md §3.3。判定とは別レイヤー):
+  //   表示順位 = corpusScore × tf × idf
+  //   分野普遍語(policy: df高)は沈み、この論文固有の語(df低)が浮く
+  const rank = (w: DocWord) => {
+    const idf = Math.log(1 / Math.max(w.entry.df ?? 0.5, 1e-4))
+    const tf = 1 + Math.log(w.count)
+    return w.entry.score * tf * Math.max(idf, 0.05)
+  }
+  // 出現回数は足切りに使わない(要件 §5.2)
+  const byRank = (a: DocWord, b: DocWord) => rank(b) - rank(a)
   return {
-    l3: rows.filter(w => w.entry.level === 'L3').sort(byScore),
-    l2: rows.filter(w => w.entry.level === 'L2').sort(byScore),
+    l3: rows.filter(w => w.entry.level === 'L3').sort(byRank),
+    l2: rows.filter(w => w.entry.level === 'L2').sort(byRank),
     totalTokens,
     unmatchedRatio: totalTokens ? 1 - matched / totalTokens : 0,
   }

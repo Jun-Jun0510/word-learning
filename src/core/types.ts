@@ -5,6 +5,8 @@ export type Level = 'L3' | 'L2' | 'L1b' | (string & {})
 export interface VocabEntry {
   level: Level
   score: number
+  /** Cコーパスで当該語を含む abstract の割合(順位付け層 idf 用。algorithm.md §3.3) */
+  df?: number
   topicRisk?: boolean
   collGeneral?: string[]
   collField?: string[]

@@ -120,6 +120,20 @@ async function forEachSentenceJsonl(prefix: string, fn: (toks: string[]) => void
   }
 }
 
+/** jsonl(abstract) → 文書ごとのレンマ集合(df 計算用) */
+async function forEachDocJsonl(prefix: string, fn: (lemmas: Set<string>) => void) {
+  for (const file of corpusFiles(prefix)) {
+    for await (const line of linesOf(file)) {
+      if (!line.trim()) continue
+      let abs = ''
+      try { abs = JSON.parse(line).abstract ?? '' } catch { continue }
+      const set = new Set<string>()
+      for (const s of sentences(stripLatex(abs))) for (const t of tokenizeRaw(s)) set.add(lemma(t.toLowerCase()))
+      fn(set)
+    }
+  }
+}
+
 async function forEachSentenceText(file: string, fn: (toks: string[]) => void) {
   for await (const line of linesOf(file)) {
     for (const s of sentences(line)) {
@@ -217,8 +231,12 @@ async function main() {
   await forEachSentenceText('corpus/A_opensubtitles.txt', t => addTokens(A, t))
   await forEachSentenceJsonl('B_', t => addTokens(B, t))
   await forEachSentenceJsonl('C_', t => addTokens(C, t))
+  // 文書頻度(順位付け層 idf 用。algorithm.md §3.3)
+  const docFreq = new Map<string, number>()
+  let numDocsC = 0
+  await forEachDocJsonl('C_', set => { numDocsC++; for (const w of set) docFreq.set(w, (docFreq.get(w) ?? 0) + 1) })
   console.timeEnd('pass1-counts')
-  console.log(`tokens A=${A.total} B=${B.total} C=${C.total}`)
+  console.log(`tokens A=${A.total} B=${B.total} C=${C.total}  docsC=${numDocsC}`)
 
   // ---- keyness ----
   const vocabAll = new Set<string>()
@@ -400,6 +418,10 @@ async function main() {
       else { level = 'L1a'; bucket = 'plain' }
     } else {
       if (kCA >= θk2 && cntC >= CFG.minCCountL2 && !STOPWORDS.has(w)) { level = 'L2'; bucket = 'technical' }
+      // A欠落ルート(§3.2 バグ修正): log-odds z は A完全欠落語で分散が爆発し過小になるため、
+      // cntA≤5(zが統計量として機能しない実測領域)かつ cntC≥minCCountL2(既存の事前決定値の
+      // 再利用、新規フィットなし)を別条件で L2 に通す。ill-posed / sim-to-real / zero-shot 等
+      else if ((A.uni.get(w) ?? 0) <= 5 && cntC >= CFG.minCCountL2 && !STOPWORDS.has(w)) { level = 'L2'; bucket = 'a-absent' }
       else { level = ''; bucket = 'low-residual' }   // 中間データには保持(取りこぼし診断用)
     }
     const pS = r && r.delta !== null ? pctRank(deltas, r.delta) : 0
@@ -438,12 +460,14 @@ async function main() {
   fs.writeFileSync(path.join(OUT_DIR, 'debug_topic.json'), JSON.stringify(topic, null, 1))
 
   const l3 = rows.filter(x => x.level === 'L3')
-  const l2 = rows.filter(x => x.level === 'L2').sort((a, b) => b.keynessC - a.keynessC).slice(0, CFG.l2Cap)
+  // cap の並びは cntC 降順(a-absent 語は kCA が構造的に低いため、kCA 順だと cap で先に切られてしまう)
+  const l2 = rows.filter(x => x.level === 'L2').sort((a, b) => b.cntC - a.cntC).slice(0, CFG.l2Cap)
   const l1b = rows.filter(x => x.level === 'L1b').sort((a, b) => b.keynessB - a.keynessB).slice(0, CFG.l1bCap)
   const entries: Record<string, any> = {}
   for (const x of [...l3, ...l2, ...l1b]) {
     entries[x.word] = {
       level: x.level, score: x.score,
+      df: +((docFreq.get(x.word) ?? 0) / numDocsC).toFixed(5),  // 順位付け層 idf 用(§3.3)
       ...(x.topicRisk ? { topicRisk: true } : {}),
       ...(x.level === 'L3' ? { collGeneral: x.collGeneral, collField: x.collField } : {}),
     }
