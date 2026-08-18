@@ -15,6 +15,18 @@
 
 L3 は読者が「知ってるつもり」で誤読する語。ここを潰すのが最大の学習効果。
 
+## 使う
+
+- **ブラウザだけで使う**: https://jun-jun0510.github.io/word-learning/ (main への push で自動デプロイ)
+- **ローカルで動かす**: **Node.js ≥ 20.19(推奨 22)** が必要。
+  ```bash
+  git clone https://github.com/Jun-Jun0510/word-learning.git
+  cd word-learning
+  npm install
+  npm run dev   # http://localhost:5173/word-learning/
+  ```
+  判定エンジンの成果物(`public/data/vocab_table.json`、約3MB)はコミット済みのため、コーパスの取得や再ビルドは不要。判定を再構築する場合のみ pipeline/(コーパス取得 約40分+ビルド 約2分)が必要。
+
 ## 構成方針
 
 - ブラウザ完結、GitHub Pages でデプロイ(サーバー費用ゼロ)
