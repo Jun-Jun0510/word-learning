@@ -168,6 +168,14 @@ flowchart LR
 ```
 
 - コーパス生データはリポジトリに入れない(サイズ・ライセンス)。`vocab_table.json` はビルド産物としてコミットする方針(Actionsでのコーパス再取得を毎回やらない。再生成はローカルで明示実行)
+
+### 6.1 将来の選択肢: Cloudflare Pages(2026-08-18 記録のみ。実装も調査もしない — 発注者指示)
+
+- 現状: GitHub Pages / public リポジトリ / アクセス制限なし
+- 移行動機になりうるもの: リポジトリを private にしたい場合、URLにアクセス制限をかけたい場合(GitHub Free では private リポジトリの Pages は不可、アクセス制限は Enterprise 限定)
+- Cloudflare Pages なら private リポジトリ可・Cloudflare Access でメール認証を無料枠で設定できる
+- 移行コスト: ビルドコマンドと出力dirの指定、base パス1行の変更
+- 必要になったら判断する
 - Pages は `main` ブランチ + Actions デプロイ。プロジェクトページ(`/word-learning/`)前提で Vite の `base` を設定
 
 ## 7. リスクと対策
